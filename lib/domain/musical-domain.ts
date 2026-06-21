@@ -33,6 +33,16 @@ export interface TuningConfig {
 export const VIOLIN_TOLERANCE_CENTS = 15 as Cents
 
 /**
+ * Linearly interpolates between two numbers.
+ * @param start - Start value
+ * @param end - End value
+ * @param t - Fraction (0.0 to 1.0)
+ */
+export function lerp(start: number, end: number, t: number): number {
+  return start + (end - start) * t
+}
+
+/**
  * Default tuning configuration (Standard Concert Pitch).
  */
 export const DEFAULT_TUNING: TuningConfig = {

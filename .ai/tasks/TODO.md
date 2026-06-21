@@ -76,18 +76,18 @@
 **Objetivo:** Unir el flujo de datos de audio con el progreso del ejercicio en el tiempo exacto de la tarjeta de sonido.
 **Asignado a:** `Runtime Optimizer`
 
-* [ ] **4.1. Desarrollo del Motor de Línea de Tiempo en `lib/practice/practice-service.ts**`
-* [ ] Implementar la carga y parseo eficiente de estructuras JSON musicales.
-* [ ] **Sincronización Maestra:** Vincular todas las consultas temporales al reloj de hardware `AudioContext.currentTime`. Queda estrictamente prohibido usar `performance.now()` o `Date.now()` para la posición del mapa.
+* [x] **4.1. Desarrollo del Motor de Línea de Timeline en `lib/practice/practice-service.ts**`
+* [x] Implementar la carga y parseo eficiente de estructuras JSON musicales.
+* [x] **Sincronización Maestra:** Vincular todas las consultas temporales al reloj de hardware `AudioContext.currentTime`. Queda estrictamente prohibido usar `performance.now()` o `Date.now()` para la posición del mapa.
 
 
-* [ ] **4.2. Estrategia de Asignación de Memoria Cero (Zero-Allocation Loop) en `lib/practice-core.ts**`
-* [ ] Pre-alojar en memoria dos buffers (`Float32Array`) cíclicos compartidos. Mientras el Worker procesa el Buffer A, el hilo principal llena el Buffer B.
-* [ ] Eliminar cualquier uso de `Object.assign`, spread operator (`...`), o inicialización de vectores dentro del loop principal. Reutilizar instancias mutando propiedades primitivas.
+* [x] **4.2. Estrategia de Asignación de Memoria Cero (Zero-Allocation Loop) en `lib/practice-core.ts**`
+* [x] Pre-alojar en memoria dos buffers (`Float32Array`) cíclicos compartidos. Mientras el Worker procesa el Buffer A, el hilo principal llena el Buffer B.
+* [x] Eliminar cualquier uso de `Object.assign`, spread operator (`...`), o inicialización de vectores dentro del loop principal. Reutilizar instancias mutando propiedades primitivas.
 
 
-* [ ] **4.3. Algoritmo de Interpolación Suave (Lerp) para la UI**
-* [ ] Diseñar el amortiguador matemático para la frecuencia detectada. Si la voz titubea microtonalmente, aplicar una interpolación lineal de paso bajo para suavizar el movimiento del avatar visual en pantalla, evitando comportamientos nerviosos o parpadeos.
+* [x] **4.3. Algoritmo de Interpolación Suave (Lerp) para la UI**
+* [x] Diseñar el amortiguador matemático para la frecuencia detectada. Si la voz titubea microtonalmente, aplicar una interpolación lineal de paso bajo para suavizar el movimiento del avatar visual en pantalla, evitando comportamientos nerviosos o parpadeos.
 
 
 

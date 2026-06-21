@@ -13,10 +13,20 @@ import { Hertz, Cents } from './musical-domain'
  * Used to communicate pitch data between the DSP engine and the domain.
  */
 export interface PitchFrame {
-  readonly frequency: Hertz
-  readonly centsDeviation: Cents
-  readonly confidence: number
-  readonly timestamp: number
+  frequency: Hertz
+  centsDeviation: Cents
+  confidence: number
+  timestamp: number
+}
+
+/**
+ * A reusable, mutable PitchFrame to avoid allocation in 60FPS loop.
+ */
+export const SHARED_PITCH_FRAME: PitchFrame = {
+  frequency: 0 as Hertz,
+  centsDeviation: 0 as Cents,
+  confidence: 0,
+  timestamp: 0,
 }
 
 /**

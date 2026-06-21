@@ -13,6 +13,9 @@
 - **Domain Abstractions:** Defined `PitchFrame` interface in `lib/domain/data-structures.ts` for microtonal analysis (Task 1.3).
 - **Audio Infrastructure Ports:** Defined `AudioCapturePort` and `PitchDetectorWorkerPort` in `lib/ports/audio.port.ts` (Task 2.1).
 - **Strict Domain Tests:** Added strict unit tests for extreme violin frequencies and microtonal precision (Task 3.1).
+- **Master Audio Clock:** Refactored `PracticeService` to use `AudioContext.currentTime` for all timing (Task 4.1).
+- **Zero-Allocation Hot Path:** Implemented shared mutable instances for `MusicalNote` and `PitchFrame` to prevent GC in 60FPS loop (Task 4.2).
+- **Signal Smoothing:** Added `lerp` utility and frequency smoothing logic to `PracticeService` (Task 4.3).
 
 ### Changed
-- Updated `.ai/tasks/TODO.md` marking tasks 1.1, 1.2, 1.3, 2.1 and 3.1 as complete.
+- Updated `.ai/tasks/TODO.md` marking tasks in Fase 4 as complete.
