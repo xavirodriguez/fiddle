@@ -14,6 +14,55 @@
 import { AppError, ERROR_CODES } from '../errors/app-error'
 
 /**
+ * Nominal types for musical magnitudes to prevent accidental mixing.
+ */
+export type Hertz = number & { readonly __brand: 'Hertz' }
+export type Cents = number & { readonly __brand: 'Cents' }
+export type MidiNote = number & { readonly __brand: 'Midi' }
+
+/**
+ * Factory for Hertz values.
+ * @throws {AppError} if value is negative or not finite.
+ */
+export function makeHertz(value: number): Hertz {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new AppError({
+      message: `Invalid Hertz value: ${value}. Must be a non-negative finite number.`,
+      code: ERROR_CODES.DATA_VALIDATION_ERROR,
+    })
+  }
+  return value as Hertz
+}
+
+/**
+ * Factory for Cents values.
+ * @throws {AppError} if value is not finite.
+ */
+export function makeCents(value: number): Cents {
+  if (!Number.isFinite(value)) {
+    throw new AppError({
+      message: `Invalid Cents value: ${value}. Must be a finite number.`,
+      code: ERROR_CODES.DATA_VALIDATION_ERROR,
+    })
+  }
+  return value as Cents
+}
+
+/**
+ * Factory for MidiNote values.
+ * @throws {AppError} if value is not finite or out of reasonable range (0-127).
+ */
+export function makeMidiNote(value: number): MidiNote {
+  if (!Number.isFinite(value) || value < 0 || value > 127) {
+    throw new AppError({
+      message: `Invalid MidiNote value: ${value}. Must be a finite number between 0 and 127.`,
+      code: ERROR_CODES.DATA_VALIDATION_ERROR,
+    })
+  }
+  return value as MidiNote
+}
+
+/**
  * Represents a pitch alteration in a canonical numeric format.
  *
  * @remarks

@@ -7,9 +7,9 @@
 **Objetivo:** Crear el núcleo matemático e inmutable del negocio musical libre de dependencias externas.
 **Asignado a:** `Domain Guardian`
 
-* [ ] **1.1. Modelado de Tipos Nominales (TypeScript Branding) en `lib/domain/musical-domain.ts**`
-* [ ] Implementar tipos marcados para evitar mezclar magnitudes físicas: `type Hertz = number & { __brand: "Hertz" }`, `type Cents = number & { __brand: "Cents" }`, y `type MidiNote = number & { __brand: "Midi" }`.
-* [ ] Crear funciones de fábrica puras con validación integrada para asegurar que ningún hercio sea negativo o infinito.
+* [x] **1.1. Modelado de Tipos Nominales (TypeScript Branding) en `lib/domain/musical-domain.ts**`
+* [x] Implementar tipos marcados para evitar mezclar magnitudes físicas: `type Hertz = number & { __brand: "Hertz" }`, `type Cents = number & { __brand: "Cents" }`, y `type MidiNote = number & { __brand: "Midi" }`.
+* [x] Crear funciones de fábrica puras con validación integrada para asegurar que ningún hercio sea negativo o infinito.
 
 
 * [ ] **1.2. Sistema de Ajuste de Afinación Base (A4 Calibration)**
@@ -105,6 +105,4 @@
 
 * [ ] **5.2. Implementación del Núcleo de Almacenamiento en `lib/persistence/persistence-core.ts**`
 * [ ] Desarrollar el adaptador concreto para `LocalStorage` o `IndexedDB` encapsulado tras las firmas del puerto.
-* [ ] Garantizar operaciones de lectura/escritura asíncronas para evitar bloqueos del hilo principal del juego durante el autoguardado.
-
-
+* [ ] Garantizar operaciones de lectura/escritura asíncoras para evitar bloqueos del hilo principal del juego durante el autoguardado.
