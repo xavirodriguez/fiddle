@@ -14,6 +14,32 @@
 import { AppError, ERROR_CODES } from '../errors/app-error'
 
 /**
+ * Configuration for base tuning.
+ *
+ * @remarks
+ * Standard tuning is A4 = 440Hz, but violinists often use 442Hz or higher.
+ */
+export interface TuningConfig {
+  readonly a4Frequency: Hertz
+}
+
+/**
+ * Violin-specific domain constants.
+ *
+ * @remarks
+ * The violin range is G3 (196Hz) to E7 (~2637Hz).
+ * Tolerance for "in-tune" is usually ±15 cents for professional practice.
+ */
+export const VIOLIN_TOLERANCE_CENTS = 15 as Cents
+
+/**
+ * Default tuning configuration (Standard Concert Pitch).
+ */
+export const DEFAULT_TUNING: TuningConfig = {
+  a4Frequency: 440 as Hertz,
+}
+
+/**
  * Nominal types for musical magnitudes to prevent accidental mixing.
  */
 export type Hertz = number & { readonly __brand: 'Hertz' }
@@ -60,6 +86,32 @@ export function makeMidiNote(value: number): MidiNote {
     })
   }
   return value as MidiNote
+}
+
+/**
+ * Converts a frequency in Hertz to its corresponding fractional MIDI note number.
+ *
+ * @formula midi = 12 * log2(f / A4) + 69
+ */
+export function frequencyToMidi(frequency: Hertz, config: TuningConfig = DEFAULT_TUNING): MidiNote {
+  if (frequency <= 0) {
+    throw new AppError({
+      message: `Cannot convert zero or negative frequency (${frequency}) to MIDI.`,
+      code: ERROR_CODES.DATA_VALIDATION_ERROR,
+    })
+  }
+  const midi = 12 * Math.log2(frequency / config.a4Frequency) + 69
+  return midi as MidiNote
+}
+
+/**
+ * Converts a MIDI note number to its corresponding frequency in Hertz.
+ *
+ * @formula f = A4 * 2^((midi - 69) / 12)
+ */
+export function midiToFrequency(midi: MidiNote, config: TuningConfig = DEFAULT_TUNING): Hertz {
+  const frequency = config.a4Frequency * Math.pow(2, (midi - 69) / 12)
+  return frequency as Hertz
 }
 
 /**

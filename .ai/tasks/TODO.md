@@ -12,18 +12,18 @@
 * [x] Crear funciones de fábrica puras con validación integrada para asegurar que ningún hercio sea negativo o infinito.
 
 
-* [ ] **1.2. Sistema de Ajuste de Afinación Base (A4 Calibration)**
-* [ ] Diseñar la estructura de configuración para soportar frecuencias base variables (`A4 = 440Hz` para voz popular, `A4 = 442Hz` o `443Hz` común en orquestas de violín).
-* [ ] Escribir convertidores bidireccionales matemáticos exactos:
-* [ ] $f \rightarrow \text{MIDI}$: $\text{midi} = 12 \cdot \log_2(f / \text{A4}) + 69$.
-* [ ] $\text{MIDI} \rightarrow f$: $f = \text{A4} \cdot 2^{(\text{midi} - 69)/12}$.
+* [x] **1.2. Sistema de Ajuste de Afinación Base (A4 Calibration)**
+* [x] Diseñar la estructura de configuración para soportar frecuencias base variables (`A4 = 440Hz` para voz popular, `A4 = 442Hz` o `443Hz` común en orquestas de violín).
+* [x] Escribir convertidores bidireccionales matemáticos exactos:
+* [x] $f \rightarrow \text{MIDI}$: $\text{midi} = 12 \cdot \log_2(f / \text{A4}) + 69$.
+* [x] $\text{MIDI} \rightarrow f$: $f = \text{A4} \cdot 2^{(\text{midi} - 69)/12}$.
 
 
 
 
-* [ ] **1.3. Abstracciones de Análisis Microtonal en `lib/domain/data-structures.ts**`
-* [ ] Crear la estructura `PitchFrame` que contenga: `frequency`, `centsDeviation`, `confidence` y `timestamp`.
-* [ ] Definir el umbral de tolerancia para el violín (rango dinámico continuo de desafinación en lugar de rejilla discreta de piano).
+* [x] **1.3. Abstracciones de Análisis Microtonal en `lib/domain/data-structures.ts**`
+* [x] Crear la estructura `PitchFrame` que contenga: `frequency`, `centsDeviation`, `confidence` y `timestamp`.
+* [x] Definir el umbral de tolerancia para el violín (rango dinámico continuo de desafinación en lugar de rejilla discreta de piano).
 
 
 
@@ -93,7 +93,7 @@
 
 ---
 
-## 💾 Fase 5: Persistencia de Sesión y Calibración Histórica
+## 🔊 Fase 5: Persistencia de Sesión y Calibración Histórica
 
 **Objetivo:** Almacenar de forma segura el perfil físico de afinación del usuario y sus estadísticas de práctica.
 **Asignado a:** `Infrastructure Engineer` (En coordinación con el Domain Guardian)
@@ -105,4 +105,4 @@
 
 * [ ] **5.2. Implementación del Núcleo de Almacenamiento en `lib/persistence/persistence-core.ts**`
 * [ ] Desarrollar el adaptador concreto para `LocalStorage` o `IndexedDB` encapsulado tras las firmas del puerto.
-* [ ] Garantizar operaciones de lectura/escritura asíncoras para evitar bloqueos del hilo principal del juego durante el autoguardado.
+* [ ] Garantizar operaciones de lectura/escritura asíncronas para evitar bloqueos del hilo principal del juego durante el autoguardado.

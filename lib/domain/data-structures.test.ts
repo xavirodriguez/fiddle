@@ -1,5 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { FixedRingBuffer } from './data-structures'
+import { FixedRingBuffer, PitchFrame } from './data-structures'
+import { Hertz, Cents } from './musical-domain'
+
+describe('PitchFrame', () => {
+  it('should allow creating a PitchFrame with branded types', () => {
+    const frame: PitchFrame = {
+      frequency: 440 as Hertz,
+      centsDeviation: 0 as Cents,
+      confidence: 1.0,
+      timestamp: 12345,
+    }
+    expect(frame.frequency).toBe(440)
+    expect(frame.centsDeviation).toBe(0)
+  })
+})
 
 describe('FixedRingBuffer', () => {
   it('should push elements to the front and maintain size', () => {

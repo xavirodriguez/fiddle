@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { makeHertz, makeCents, makeMidiNote } from './musical-domain'
+import {
+  makeHertz,
+  makeCents,
+  makeMidiNote,
+  frequencyToMidi,
+  midiToFrequency,
+  Hertz,
+  MidiNote,
+} from './musical-domain'
 import { AppError } from '../errors/app-error'
 
 describe('Musical Domain Nominal Types', () => {
@@ -49,6 +57,38 @@ describe('Musical Domain Nominal Types', () => {
 
     it('should throw AppError for non-finite midi note', () => {
       expect(() => makeMidiNote(NaN)).toThrow(AppError)
+    })
+  })
+
+  describe('Mathematical Converters', () => {
+    it('should convert 440Hz to MIDI 69 with default config', () => {
+      const midi = frequencyToMidi(440 as Hertz)
+      expect(midi).toBe(69)
+    })
+
+    it('should convert MIDI 69 to 440Hz with default config', () => {
+      const freq = midiToFrequency(69 as MidiNote)
+      expect(freq).toBe(440)
+    })
+
+    it('should handle custom A4 calibration (e.g., 442Hz)', () => {
+      const config = { a4Frequency: 442 as Hertz }
+      const midi = frequencyToMidi(442 as Hertz, config)
+      expect(midi).toBe(69)
+
+      const freq = midiToFrequency(69 as MidiNote, config)
+      expect(freq).toBe(442)
+    })
+
+    it('should be bi-directional', () => {
+      const originalFreq = 261.63 as Hertz // C4 approx
+      const midi = frequencyToMidi(originalFreq)
+      const freq = midiToFrequency(midi)
+      expect(freq).toBeCloseTo(originalFreq, 5)
+    })
+
+    it('should throw AppError when converting zero frequency to MIDI', () => {
+      expect(() => frequencyToMidi(0 as Hertz)).toThrow(AppError)
     })
   })
 })

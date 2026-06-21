@@ -4,6 +4,21 @@
  * Provides specialized, type-safe data structures for domain-specific needs.
  */
 
+import { Hertz, Cents } from './musical-domain'
+
+/**
+ * Represents a single frame of pitch analysis.
+ *
+ * @remarks
+ * Used to communicate pitch data between the DSP engine and the domain.
+ */
+export interface PitchFrame {
+  readonly frequency: Hertz
+  readonly centsDeviation: Cents
+  readonly confidence: number
+  readonly timestamp: number
+}
+
 /**
  * A fixed-size circular buffer that automatically discards the oldest elements.
  * Useful for tracking detection history without unbounded memory growth.
