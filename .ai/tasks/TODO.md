@@ -98,11 +98,11 @@
 **Objetivo:** Almacenar de forma segura el perfil físico de afinación del usuario y sus estadísticas de práctica.
 **Asignado a:** `Infrastructure Engineer` (En coordinación con el Domain Guardian)
 
-* [ ] **5.1. Definición de Esquemas en `lib/persistence/storage-types.ts**`
-* [ ] Definir el tipo estructurado para guardar las sesiones de práctica (`PracticeSessionRecord`): puntaje total, porcentaje de precisión en el tono, nota con mayor dificultad detectada y duración.
-* [ ] Definir el esquema para el perfil de calibración del micrófono (umbral personalizado de la puerta de ruido y latencia estimada del hardware del usuario).
+* [x] **5.1. Definición de Esquemas en `lib/persistence/storage-types.ts**`
+* [x] Definir el tipo estructurado para guardar las sesiones de práctica (`PracticeSessionRecord`): puntaje total, porcentaje de precisión en el tono, nota con mayor dificultad detectada y duración.
+* [x] Definir el esquema para el perfil de calibración del micrófono (umbral personalizado de la puerta de ruido y latencia estimada del hardware del usuario).
 
 
-* [ ] **5.2. Implementación del Núcleo de Almacenamiento en `lib/persistence/persistence-core.ts**`
-* [ ] Desarrollar el adaptador concreto para `LocalStorage` o `IndexedDB` encapsulado tras las firmas del puerto.
-* [ ] Garantizar operaciones de lectura/escritura asíncronas para evitar bloqueos del hilo principal del juego durante el autoguardado.
+* [x] **5.2. Implementación del Núcleo de Almacenamiento en `lib/persistence/persistence-core.ts**`
+* [x] Desarrollar el adaptador concreto para `LocalStorage` o `IndexedDB` encapsulado tras las firmas del puerto.
+* [x] Garantizar operaciones de lectura/escritura asíncronas para evitar bloqueos del hilo principal del juego durante el autoguardado.

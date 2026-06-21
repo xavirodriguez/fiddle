@@ -84,3 +84,42 @@ function executeValidationAndMerge<T>(params: {
     return currentState
   }
 }
+
+/**
+ * Asynchronously saves data to local storage without blocking the main thread.
+ *
+ * @remarks
+ * Uses setTimeout to push the heavy serialization/compression to the next task.
+ */
+export async function saveAsync(key: string, data: unknown): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const compressed = serializeAndCompress(data)
+      localStorage.setItem(key, compressed)
+      resolve()
+    }, 0)
+  })
+}
+
+/**
+ * Asynchronously loads data from local storage.
+ */
+export async function loadAsync<T>(key: string, schema: z.ZodType<T>): Promise<T | null> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const val = localStorage.getItem(key)
+      if (!val) {
+        resolve(null)
+        return
+      }
+      try {
+        const decompressed = decompressAndDeserialize(val)
+        const validated = schema.parse(decompressed)
+        resolve(validated)
+      } catch (error) {
+        console.error(`[Persist] Error loading key "${key}":`, error)
+        resolve(null)
+      }
+    }, 0)
+  })
+}
