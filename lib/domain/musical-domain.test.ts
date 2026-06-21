@@ -90,5 +90,35 @@ describe('Musical Domain Nominal Types', () => {
     it('should throw AppError when converting zero frequency to MIDI', () => {
       expect(() => frequencyToMidi(0 as Hertz)).toThrow(AppError)
     })
+
+    it('should accurately convert G3 (violin open string) frequency to MIDI', () => {
+      const g3Freq = 196.0 as Hertz
+      const midi = frequencyToMidi(g3Freq)
+      expect(midi).toBeCloseTo(55, 1) // G3 is MIDI 55
+    })
+
+    it('should accurately convert E7 (violin high harmonic) frequency to MIDI', () => {
+      const e7Freq = 2637.02 as Hertz
+      const midi = frequencyToMidi(e7Freq)
+      expect(midi).toBeCloseTo(100, 2) // E7 is MIDI 100
+    })
+
+    it('should calculate microtonal cents deviation with 4 decimal precision', () => {
+      // 440Hz is A4 (MIDI 69.0)
+      // 441Hz calculation: 1200 * log2(441/440) ≈ 3.9302
+      const freq = 441 as Hertz
+      const midi = frequencyToMidi(freq)
+      const cents = (midi - 69) * 100
+      expect(cents).toBeCloseTo(3.9302, 4)
+    })
+
+    it('should calculate negative cents deviation for flat notes', () => {
+      // 440Hz is A4 (MIDI 69.0)
+      // 439Hz calculation: 1200 * log2(439/440) ≈ -3.9391
+      const freq = 439 as Hertz
+      const midi = frequencyToMidi(freq)
+      const cents = (midi - 69) * 100
+      expect(cents).toBeCloseTo(-3.9391, 4)
+    })
   })
 })

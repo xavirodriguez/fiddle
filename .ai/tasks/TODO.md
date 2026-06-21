@@ -58,9 +58,9 @@
 **Objetivo:** Asegurar mediante pruebas con datos sintéticos que el motor detecta notas reales antes de tocar instrumentos en vivo.
 **Asignado a:** `Signal Tester`
 
-* [ ] **3.1. Implementación de Pruebas Unitarias Estrictas en `lib/domain/data-structures.test.ts**`
-* [ ] Validar conversiones de hercios extremos a notas MIDI (ej. G3, E7, C4).
-* [ ] Comprobar que los cálculos de *cents* manejen desviaciones tanto positivas (agudo) como negativas (grave) con precisión de 4 decimales.
+* [x] **3.1. Implementación de Pruebas Unitarias Estrictas en `lib/domain/data-structures.test.ts**`
+* [x] Validar conversiones de hercios extremos a notas MIDI (ej. G3, E7, C4).
+* [x] Comprobar que los cálculos de *cents* manejen desviaciones tanto positivas (agudo) como negativas (grave) con precisión de 4 decimales.
 
 
 * [ ] **3.2. Generador de Señales Sintéticas de Prueba**

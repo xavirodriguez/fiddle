@@ -12,6 +12,7 @@
 - **Pitch Math:** Implemented `frequencyToMidi` and `midiToFrequency` converters with calibration support (Task 1.2).
 - **Domain Abstractions:** Defined `PitchFrame` interface in `lib/domain/data-structures.ts` for microtonal analysis (Task 1.3).
 - **Audio Infrastructure Ports:** Defined `AudioCapturePort` and `PitchDetectorWorkerPort` in `lib/ports/audio.port.ts` (Task 2.1).
+- **Strict Domain Tests:** Added strict unit tests for extreme violin frequencies and microtonal precision (Task 3.1).
 
 ### Changed
-- Updated `.ai/tasks/TODO.md` marking tasks 1.1, 1.2, 1.3 and 2.1 as complete.
+- Updated `.ai/tasks/TODO.md` marking tasks 1.1, 1.2, 1.3, 2.1 and 3.1 as complete.
