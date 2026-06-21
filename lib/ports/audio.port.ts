@@ -1,4 +1,62 @@
 import { PitchDetectionResult } from '../pitch-detector'
+import { PitchFrame } from '../domain/data-structures'
+
+/**
+ * Event types for audio hardware changes.
+ */
+export type AudioDeviceEvent = 'devicechange' | 'error' | 'statechange'
+
+/**
+ * Port for hardware audio capture management.
+ */
+export interface AudioCapturePort {
+  /**
+   * Initializes the audio context and requests microphone permissions.
+   */
+  initialize(): Promise<void>
+
+  /**
+   * Starts capturing audio and streaming it to the processing pipeline.
+   * @param onFrame Callback for each captured audio buffer.
+   */
+  startStream(onFrame: (frame: Float32Array) => void): Promise<void>
+
+  /**
+   * Stops the current audio stream and releases hardware resources.
+   */
+  stopStream(): Promise<void>
+
+  /**
+   * Subscribes to hardware or stream events.
+   */
+  on(event: AudioDeviceEvent, callback: (data?: unknown) => void): void
+
+  /**
+   * The current sample rate of the hardware.
+   */
+  readonly sampleRate: number
+}
+
+/**
+ * Port for asynchronous pitch detection communication (Web Worker).
+ */
+export interface PitchDetectorWorkerPort {
+  /**
+   * Sends a buffer to the worker for analysis.
+   * Uses Transferable Objects for zero-copy performance.
+   */
+  postBuffer(buffer: Float32Array): void
+
+  /**
+   * Registers a callback for when the worker completes an analysis.
+   */
+  onResult(callback: (result: PitchFrame) => void): void
+
+  /**
+   * Terminates the worker.
+   */
+  terminate(): void
+}
 
 /**
  * Port for retrieving raw audio frames from an input source.

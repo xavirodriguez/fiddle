@@ -34,9 +34,9 @@
 **Objetivo:** Capturar la señal cruda, aislar los armónicos y procesarla en un hilo secundario sin latencia.
 **Asignado a:** `DSP Wizard`
 
-* [ ] **2.1. Definición de Contratos en `lib/ports/audio.port.ts**`
-* [ ] Declarar la interfaz `AudioCapturePort` con métodos para `initialize()`, `startStream()`, `stopStream()` y sus respectivos listeners de eventos de cambio de hardware.
-* [ ] Declarar la interfaz `PitchDetectorWorkerPort` para definir el intercambio de datos con el hilo asíncrono.
+* [x] **2.1. Definición de Contratos en `lib/ports/audio.port.ts**`
+* [x] Declarar la interfaz `AudioCapturePort` con métodos para `initialize()`, `startStream()`, `stopStream()` y sus respectivos listeners de eventos de cambio de hardware.
+* [x] Declarar la interfaz `PitchDetectorWorkerPort` para definir el intercambio de datos con el hilo asíncrono.
 
 
 * [ ] **2.2. Implementación del Grafo de Nodos Web Audio API**
@@ -93,7 +93,7 @@
 
 ---
 
-## 🔊 Fase 5: Persistencia de Sesión y Calibración Histórica
+## 💾 Fase 5: Persistencia de Sesión y Calibración Histórica
 
 **Objetivo:** Almacenar de forma segura el perfil físico de afinación del usuario y sus estadísticas de práctica.
 **Asignado a:** `Infrastructure Engineer` (En coordinación con el Domain Guardian)
