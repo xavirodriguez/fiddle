@@ -14,6 +14,117 @@
 import { AppError, ERROR_CODES } from '../errors/app-error'
 
 /**
+ * Configuration for base tuning.
+ *
+ * @remarks
+ * Standard tuning is A4 = 440Hz, but violinists often use 442Hz or higher.
+ */
+export interface TuningConfig {
+  readonly a4Frequency: Hertz
+}
+
+/**
+ * Violin-specific domain constants.
+ *
+ * @remarks
+ * The violin range is G3 (196Hz) to E7 (~2637Hz).
+ * Tolerance for "in-tune" is usually ±15 cents for professional practice.
+ */
+export const VIOLIN_TOLERANCE_CENTS = 15 as Cents
+
+/**
+ * Linearly interpolates between two numbers.
+ * @param start - Start value
+ * @param end - End value
+ * @param t - Fraction (0.0 to 1.0)
+ */
+export function lerp(start: number, end: number, t: number): number {
+  return start + (end - start) * t
+}
+
+/**
+ * Default tuning configuration (Standard Concert Pitch).
+ */
+export const DEFAULT_TUNING: TuningConfig = {
+  a4Frequency: 440 as Hertz,
+}
+
+/**
+ * Nominal types for musical magnitudes to prevent accidental mixing.
+ */
+export type Hertz = number & { readonly __brand: 'Hertz' }
+export type Cents = number & { readonly __brand: 'Cents' }
+export type MidiNote = number & { readonly __brand: 'Midi' }
+
+/**
+ * Factory for Hertz values.
+ * @throws {AppError} if value is negative or not finite.
+ */
+export function makeHertz(value: number): Hertz {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new AppError({
+      message: `Invalid Hertz value: ${value}. Must be a non-negative finite number.`,
+      code: ERROR_CODES.DATA_VALIDATION_ERROR,
+    })
+  }
+  return value as Hertz
+}
+
+/**
+ * Factory for Cents values.
+ * @throws {AppError} if value is not finite.
+ */
+export function makeCents(value: number): Cents {
+  if (!Number.isFinite(value)) {
+    throw new AppError({
+      message: `Invalid Cents value: ${value}. Must be a finite number.`,
+      code: ERROR_CODES.DATA_VALIDATION_ERROR,
+    })
+  }
+  return value as Cents
+}
+
+/**
+ * Factory for MidiNote values.
+ * @throws {AppError} if value is not finite or out of reasonable range (0-127).
+ */
+export function makeMidiNote(value: number): MidiNote {
+  if (!Number.isFinite(value) || value < 0 || value > 127) {
+    throw new AppError({
+      message: `Invalid MidiNote value: ${value}. Must be a finite number between 0 and 127.`,
+      code: ERROR_CODES.DATA_VALIDATION_ERROR,
+    })
+  }
+  return value as MidiNote
+}
+
+/**
+ * Converts a frequency in Hertz to its corresponding fractional MIDI note number.
+ *
+ * @formula midi = 12 * log2(f / A4) + 69
+ */
+export function frequencyToMidi(frequency: Hertz, config: TuningConfig = DEFAULT_TUNING): MidiNote {
+  if (frequency <= 0) {
+    throw new AppError({
+      message: `Cannot convert zero or negative frequency (${frequency}) to MIDI.`,
+      code: ERROR_CODES.DATA_VALIDATION_ERROR,
+    })
+  }
+  const midi = 12 * Math.log2(frequency / config.a4Frequency) + 69
+  return midi as MidiNote
+}
+
+/**
+ * Converts a MIDI note number to its corresponding frequency in Hertz.
+ *
+ * @formula f = A4 * 2^((midi - 69) / 12)
+ */
+export function midiToFrequency(midi: MidiNote, config: TuningConfig = DEFAULT_TUNING): Hertz {
+  const frequency = config.a4Frequency * Math.pow(2, (midi - 69) / 12)
+  return frequency as Hertz
+}
+
+/**
  * Represents a pitch alteration in a canonical numeric format.
  *
  * @remarks

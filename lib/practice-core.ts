@@ -5,7 +5,13 @@
  * Refactored for branded types and strict validation.
  */
 
-import { normalizeAccidental } from './domain/musical-domain'
+import {
+  normalizeAccidental,
+  DEFAULT_TUNING,
+  TuningConfig,
+  frequencyToMidi,
+  midiToFrequency,
+} from './domain/musical-domain'
 import { AppError, ERROR_CODES } from './errors/app-error'
 import { Observation } from './technique-types'
 import type { Note as TargetNote } from '@/lib/domain/exercise'
@@ -62,30 +68,55 @@ const ACCIDENTAL_MODIFIERS: Record<string, number> = {
   bb: -2,
 }
 
-const A4_FREQUENCY = 440
-const A4_MIDI = 69
-
 /**
  * Represents a musical note with properties derived from its frequency.
  */
 export class MusicalNote {
+  // Static reusable instance to avoid allocation in 60FPS loop
+  private static readonly REUSABLE_INSTANCE = new MusicalNote(0, 0, '', 0, 0)
+
   private constructor(
-    public readonly frequency: number,
-    public readonly midiNumber: number,
-    public readonly noteName: string,
-    public readonly octave: number,
-    public readonly centsDeviation: number,
+    public frequency: number,
+    public midiNumber: number,
+    public noteName: string,
+    public octave: number,
+    public centsDeviation: number,
   ) {}
 
   isEnharmonic(other: MusicalNote): boolean {
     return this.midiNumber === other.midiNumber
   }
 
-  static fromFrequency(frequency: number): MusicalNote {
+  /**
+   * Returns a shared, mutable instance updated with new frequency data.
+   * WARNING: Do not store references to this instance.
+   */
+  static fromFrequencyShared(
+    frequency: number,
+    config: TuningConfig = DEFAULT_TUNING,
+  ): MusicalNote {
     validateFrequency(frequency)
-    const midiNumber = A4_MIDI + 12 * Math.log2(frequency / A4_FREQUENCY)
-    const roundedMidi = Math.round(midiNumber)
-    const centsDeviation = (midiNumber - roundedMidi) * 100
+    const exactMidi = frequencyToMidi(frequency as any, config)
+    const roundedMidi = Math.round(exactMidi)
+    const centsDeviation = (exactMidi - roundedMidi) * 100
+    const noteIndex = ((roundedMidi % 12) + 12) % 12
+    const octave = Math.floor(roundedMidi / 12) - 1
+
+    const instance = MusicalNote.REUSABLE_INSTANCE
+    instance.frequency = frequency
+    instance.midiNumber = roundedMidi
+    instance.noteName = NOTE_NAMES[noteIndex]
+    instance.octave = octave
+    instance.centsDeviation = centsDeviation
+
+    return instance
+  }
+
+  static fromFrequency(frequency: number, config: TuningConfig = DEFAULT_TUNING): MusicalNote {
+    validateFrequency(frequency)
+    const exactMidi = frequencyToMidi(frequency as any, config)
+    const roundedMidi = Math.round(exactMidi)
+    const centsDeviation = (exactMidi - roundedMidi) * 100
     const noteIndex = ((roundedMidi % 12) + 12) % 12
     const octave = Math.floor(roundedMidi / 12) - 1
     const noteName = NOTE_NAMES[noteIndex]
@@ -93,15 +124,9 @@ export class MusicalNote {
     return new MusicalNote(frequency, roundedMidi, noteName, octave, centsDeviation)
   }
 
-  static fromMidi(midiNumber: number): MusicalNote {
-    if (!Number.isFinite(midiNumber)) {
-      throw new Error(`Invalid MIDI number: ${midiNumber}`)
-    }
-
-    const interval = (midiNumber - A4_MIDI) / 12
-    const frequency = A4_FREQUENCY * Math.pow(2, interval)
-
-    return MusicalNote.fromFrequency(frequency)
+  static fromMidi(midiNumber: number, config: TuningConfig = DEFAULT_TUNING): MusicalNote {
+    const frequency = midiToFrequency(midiNumber as any, config)
+    return MusicalNote.fromFrequency(frequency, config)
   }
 
   /**
