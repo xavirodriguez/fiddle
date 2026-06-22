@@ -68,7 +68,10 @@ export class FixedRingBuffer<T, N extends number> {
     const size = this.buffer.size
     let i = 0
     for (let j = size - 1; j >= 0; j--) {
-      callback(this.buffer.get(j), i++)
+      const item = this.buffer.get(j)
+      if (item !== undefined) {
+        callback(item, i++)
+      }
     }
   }
 
