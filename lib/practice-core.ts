@@ -111,7 +111,9 @@ export class MusicalNote {
     config: TuningConfig = DEFAULT_TUNING,
   ): MusicalNote {
     validateFrequency(frequency)
-    const exactMidi = frequencyToMidi(frequency as any, config)
+    const midiResult = frequencyToMidi(frequency as any, config)
+    if (midiResult.isErr()) throw midiResult.error
+    const exactMidi = midiResult.value
     const roundedMidi = Math.round(exactMidi)
     const centsDeviation = (exactMidi - roundedMidi) * 100
     const noteIndex = ((roundedMidi % 12) + 12) % 12
@@ -129,7 +131,9 @@ export class MusicalNote {
 
   static fromFrequency(frequency: number, config: TuningConfig = DEFAULT_TUNING): MusicalNote {
     validateFrequency(frequency)
-    const exactMidi = frequencyToMidi(frequency as any, config)
+    const midiResult = frequencyToMidi(frequency as any, config)
+    if (midiResult.isErr()) throw midiResult.error
+    const exactMidi = midiResult.value
     const roundedMidi = Math.round(exactMidi)
     const centsDeviation = (exactMidi - roundedMidi) * 100
     const noteIndex = ((roundedMidi % 12) + 12) % 12
@@ -140,8 +144,9 @@ export class MusicalNote {
   }
 
   static fromMidi(midiNumber: number, config: TuningConfig = DEFAULT_TUNING): MusicalNote {
-    const frequency = midiToFrequency(midiNumber as any, config)
-    return MusicalNote.fromFrequency(frequency, config)
+    const freqResult = midiToFrequency(midiNumber as any, config)
+    if (freqResult.isErr()) throw freqResult.error
+    return MusicalNote.fromFrequency(freqResult.value, config)
   }
 
   /**
@@ -201,7 +206,9 @@ function validateFrequency(frequency: number): void {
  * Converts a `TargetNote`'s pitch into a standard, parsable note name string.
  */
 export function formatPitchName(pitch: TargetNote['pitch']): NoteName {
-  const canonicalAlter = normalizeAccidental(pitch.alter)
+  const alterResult = normalizeAccidental(pitch.alter)
+  if (alterResult.isErr()) throw alterResult.error
+  const canonicalAlter = alterResult.value
   const alterStr = getAlterString(canonicalAlter, pitch.alter)
   const result = `${pitch.step}${alterStr}${pitch.octave}`
   assertValidNoteName(result)

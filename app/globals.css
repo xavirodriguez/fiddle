@@ -1,0 +1,56 @@
+@import 'tailwindcss';
+
+/* --------------------------------------------------------------------------
+   Design Tokens — Violin Mentor
+   4-colour system:
+     #0e0e0f  background (near-black)
+     #f0ede8  foreground (warm off-white)
+     #f5a623  accent     (amber — "in tune")
+     #e03434  needle-hot (red — "out of tune")
+   Neutrals: #2a2a2d (surface-raised), #3f3f44 (dial-tick), #888 (muted)
+   -------------------------------------------------------------------------- */
+
+@theme inline {
+  /* Fonts */
+  --font-sans: 'Inter', 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Mono', 'Courier New', ui-monospace, monospace;
+
+  /* Semantic colour tokens */
+  --color-background:     #0e0e0f;
+  --color-foreground:     #f0ede8;
+  --color-muted:          #888888;
+  --color-surface-raised: #1c1c1f;
+  --color-border:         #2a2a2d;
+
+  /* Brand */
+  --color-accent:         #f5a623;
+
+  /* Tuner-specific */
+  --color-needle-idle:    #3f3f44;
+  --color-needle-hot:     #e03434;
+  --color-dial-track:     #2a2a2d;
+  --color-dial-tick:      #3f3f44;
+  --color-dial-label:     #555560;
+
+  /* Radius */
+  --radius: 0.25rem;
+}
+
+/* Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+}
