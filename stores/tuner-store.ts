@@ -44,6 +44,13 @@ export interface TunerActions {
   start(): void
   /** Stop the microphone stream and release hardware. */
   stop(): void
+  /**
+   * Directly write a pitch reading into the store.
+   * Used by PracticeService when it drives its own RAF loop instead of the
+   * RxJS stream, to keep all pitch data flowing through one place.
+   * Zero-allocation: mutates the pre-allocated `_frame` object.
+   */
+  updatePitch(frequencyHz: number, confidence: number): void
 }
 
 // ---------------------------------------------------------------------------
@@ -110,6 +117,26 @@ export const useTunerStore = create<TunerState & TunerActions>()((set, get) => {
       subscription?.unsubscribe()
       subscription = null
       set({ active: false })
+    },
+
+    updatePitch(frequencyHz: number, confidence: number) {
+      // Compute cents deviation from nearest semitone — zero-allocation path.
+      let cents = 0 as Cents
+      if (frequencyHz > 0) {
+        const midi = 12 * Math.log2(frequencyHz / 440) + 69
+        const rounded = Math.round(midi)
+        cents = ((midi - rounded) * 100) as Cents
+      }
+      _frame.frequency  = frequencyHz as Hertz
+      _frame.cents      = cents
+      _frame.confidence = confidence
+      _frame.timestamp  = 0 // No AudioContext reference here; caller tracks time
+      set({
+        frequency:  _frame.frequency,
+        cents:      _frame.cents,
+        confidence: _frame.confidence,
+        timestamp:  _frame.timestamp,
+      })
     },
   }
 })

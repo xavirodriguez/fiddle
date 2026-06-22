@@ -7,7 +7,6 @@
  */
 
 import type { Note } from './exercise'
-import type { Cents, Hertz } from './musical-domain'
 import type { Observation } from '../technique-types'
 
 // ---------------------------------------------------------------------------
@@ -41,7 +40,7 @@ export interface DetectedNote {
   /** Raw detected frequency in Hz. */
   pitchHz: number
   /** Deviation from the nearest semitone in cents (−50 … +50). */
-  cents: Cents
+  cents: number
   /** AudioContext.currentTime when this frame was captured. */
   timestamp: number
   /** Pitchy confidence score (0–1). */
