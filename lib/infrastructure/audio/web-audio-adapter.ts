@@ -6,7 +6,6 @@ import { AudioCapturePort, AudioDeviceEvent } from '../../ports/audio.port'
  * WebAudioAdapter
  *
  * Implements AudioCapturePort using native Web Audio API.
- * Uses AudioWorklet for elite performance.
  */
 export class WebAudioAdapter implements AudioCapturePort {
   private audioContext: AudioContext | null = null
@@ -33,7 +32,7 @@ export class WebAudioAdapter implements AudioCapturePort {
     try {
       this.audioContext = new AudioContext()
 
-      // Load the worklet
+      // Load the worklet from public
       await this.audioContext.audioWorklet.addModule('/worklets/CaptureProcessor.js')
 
       this.stream = await navigator.mediaDevices.getUserMedia({
@@ -46,7 +45,6 @@ export class WebAudioAdapter implements AudioCapturePort {
 
       this.source = this.audioContext.createMediaStreamAudioSource(this.stream)
 
-      // Adaptive Biquad Filter: Initialized for violin
       this.filter = this.audioContext.createBiquadFilter()
       this.filter.type = 'bandpass'
       this.filter.frequency.value = 1400
@@ -72,12 +70,9 @@ export class WebAudioAdapter implements AudioCapturePort {
     }
   }
 
-  /**
-   * Adapts the filter frequency based on current detection or user setting.
-   */
   public updateFilterFrequency(hz: number): void {
-    if (this.filter) {
-      this.filter.frequency.setTargetAtTime(hz, this.audioContext!.currentTime, 0.1)
+    if (this.filter && this.audioContext) {
+      this.filter.frequency.setTargetAtTime(hz, this.audioContext.currentTime, 0.1)
     }
   }
 
@@ -135,5 +130,9 @@ export class WebAudioAdapter implements AudioCapturePort {
 
   get sampleRate(): number {
     return this.audioContext?.sampleRate || 44100
+  }
+
+  getCurrentTime(): number {
+    return this.audioContext?.currentTime || 0
   }
 }

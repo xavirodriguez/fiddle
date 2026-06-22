@@ -1,19 +1,16 @@
 /**
- * Detection Result
+ * PitchWorker
  *
- * Data transfer object for pitch analysis results.
+ * High-performance Web Worker for real-time pitch detection.
+ * Uses AMDF and centralized algorithms with Zero-Allocation patterns.
  */
-export interface DetectionResult {
-  frequency: number;
-  confidence: number;
-  minDifference?: number;
-  rms: number;
-}
+
+/* eslint-disable no-restricted-globals */
 
 /**
  * Calculates Root Mean Square (RMS) for noise gating.
  */
-export function calculateRMS(buffer: Float32Array): number {
+function calculateRMS(buffer) {
   let sum = 0;
   const len = buffer.length;
   for (let i = 0; i < len; i++) {
@@ -24,20 +21,12 @@ export function calculateRMS(buffer: Float32Array): number {
 
 /**
  * AMDF (Average Magnitude Difference Function) Implementation.
- * Optimized for violin range (G3 to E7).
  */
-export function detectPitchAMDF(
-  buffer: Float32Array,
-  sampleRate: number,
-  rms: number,
-  diffsBuffer: Float32Array
-): DetectionResult {
+function detectPitchAMDF(buffer, sampleRate, rms, diffsBuffer) {
   const minFreq = 180;
   const maxFreq = 2800;
-
   const minPeriod = Math.floor(sampleRate / maxFreq);
   const maxPeriod = Math.ceil(sampleRate / minFreq);
-
   const windowSize = Math.floor(buffer.length / 2);
   let globalMinDiff = Infinity;
 
@@ -54,7 +43,6 @@ export function detectPitchAMDF(
 
   const absoluteThreshold = rms * 0.2;
   let bestPeriod = 0;
-
   for (let tau = minPeriod + 1; tau < maxPeriod; tau++) {
     if (diffsBuffer[tau] < diffsBuffer[tau - 1] && diffsBuffer[tau] < diffsBuffer[tau + 1]) {
       if (diffsBuffer[tau] < absoluteThreshold) {
@@ -76,7 +64,7 @@ export function detectPitchAMDF(
 
   if (bestPeriod === 0) return { frequency: 0, confidence: 0, rms };
 
-  let refinedPeriod = (bestPeriod as number);
+  let refinedPeriod = bestPeriod;
   if (bestPeriod > minPeriod && bestPeriod < maxPeriod) {
     const y0 = diffsBuffer[bestPeriod - 1];
     const y1 = diffsBuffer[bestPeriod];
@@ -94,7 +82,29 @@ export function detectPitchAMDF(
   return {
     frequency,
     confidence: isNaN(confidence) ? 0 : Math.min(1.0, confidence),
-    minDifference: diffsBuffer[bestPeriod],
     rms
-  }
+  };
 }
+
+// Pre-allocated buffers
+const MAX_SAMPLE_RATE = 192000;
+const MIN_FREQ_CONST = 180;
+const MAX_PERIOD_CONST = Math.ceil(MAX_SAMPLE_RATE / MIN_FREQ_CONST);
+const differencesBuffer = new Float32Array(MAX_PERIOD_CONST + 2);
+
+self.onmessage = (event) => {
+  const { buffer, sampleRate } = event.data;
+  if (!buffer || !sampleRate) return;
+
+  const rms = calculateRMS(buffer);
+  const NOISE_GATE_THRESHOLD = 0.005;
+
+  let result;
+  if (rms < NOISE_GATE_THRESHOLD) {
+    result = { frequency: 0, confidence: 0, rms };
+  } else {
+    result = detectPitchAMDF(buffer, sampleRate, rms, differencesBuffer);
+  }
+
+  self.postMessage({ result, buffer }, [buffer.buffer]);
+};
