@@ -55,24 +55,14 @@ export class FixedRingBuffer<T, N extends number> {
   }
 
   toArray(): readonly T[] {
-    const size = this.buffer.size
-    const result: T[] = new Array(size)
-    let i = size - 1
-    this.buffer.forEach((item: T) => {
-      result[i--] = item
-    })
-    return result
+    // Uses native toArray and reverse to avoid manual loops and provide newest-first order
+    // We cast to T[] to ensure compatibility with the readonly T[] return type
+    return (this.buffer.toArray() as T[]).reverse()
   }
 
   forEach(callback: (item: T, index: number) => void): void {
-    const size = this.buffer.size
-    let i = 0
-    for (let j = size - 1; j >= 0; j--) {
-      const item = this.buffer.get(j)
-      if (item !== undefined) {
-        callback(item, i++)
-      }
-    }
+    // Uses native toArray/reverse/forEach to eliminate manual loop logic
+    ;(this.buffer.toArray() as T[]).reverse().forEach(callback)
   }
 
   clear(): void {
