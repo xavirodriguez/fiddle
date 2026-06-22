@@ -152,7 +152,7 @@ export class MusicalNote {
    */
   static tryFromName(fullName: NoteName): Result<MusicalNote, AppError> {
     return validateNoteName(fullName).andThen((validName) => {
-      const match = (validName as string).match(/^([A-G])(b{1,2}|#{1,2})?([0-8])$/)
+      const match = validName.match(/^([A-G])(b{1,2}|#{1,2})?([0-8])$/)
       if (!match) {
         return err(
           new AppError({
