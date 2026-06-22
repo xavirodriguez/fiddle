@@ -11,6 +11,7 @@
 import dynamic from 'next/dynamic'
 import { usePracticeStore } from '@/stores/practice-store'
 import { PracticeToolbar } from './practice-toolbar'
+import { FeedbackOverlay } from './feedback-overlay'
 
 // ---------------------------------------------------------------------------
 // Lazy OSMD wrapper — loaded only on the client, no SSR.
@@ -83,6 +84,12 @@ export function PracticeContainer() {
         onToggleLoop={handleToggleLoop}
       />
 
+      {/*
+        The score wrapper is `relative` so FeedbackOverlay (position:absolute)
+        stacks on top of OSMD without affecting its layout. SheetMusicWrapper
+        is React.memo'd and never re-renders due to tuner updates because it
+        receives no pitch props — FeedbackOverlay owns all real-time data.
+      */}
       <div className="relative flex flex-1 overflow-hidden bg-background">
         <SheetMusicWrapper
           musicXml={null}
@@ -90,6 +97,7 @@ export function PracticeContainer() {
           onReady={handleScoreReady}
           onError={handleScoreError}
         />
+        <FeedbackOverlay />
       </div>
     </div>
   )
