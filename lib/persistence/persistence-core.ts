@@ -8,7 +8,15 @@ import pako from 'pako'
 export function serializeAndCompress(value: unknown): string {
   const jsonString = superjson.stringify(value)
   const compressedBuffer = pako.deflate(jsonString)
-  const binaryString = String.fromCharCode(...compressedBuffer)
+
+  // Avoid stack overflow from spread operator on large buffers
+  const CHUNK_SIZE = 8192
+  let binaryString = ''
+  for (let i = 0; i < compressedBuffer.length; i += CHUNK_SIZE) {
+    const chunk = compressedBuffer.subarray(i, i + CHUNK_SIZE)
+    binaryString += String.fromCharCode(...chunk)
+  }
+
   const base64String = btoa(binaryString)
   const result = base64String
 

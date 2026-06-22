@@ -7,7 +7,7 @@
  */
 
 const FFT_SIZE = 4096
-const SMOOTHING_TIME_CONSTANT = 0.8
+const SMOOTHING_TIME_CONSTANT = 0
 
 class AudioManager {
   private context: AudioContext | null = null

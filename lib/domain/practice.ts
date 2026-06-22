@@ -7,7 +7,7 @@
  */
 
 import type { Note } from './exercise'
-import type { Observation } from '../technique-types'
+import type { Observation, NoteTechnique } from '../technique-types'
 
 // ---------------------------------------------------------------------------
 // Session status
@@ -155,7 +155,7 @@ export type PracticeEvent =
   | { type: 'NOTE_DETECTED'; payload: DetectedNote }
   | { type: 'HOLDING_NOTE'; payload: { duration: number } }
   | { type: 'NO_NOTE_DETECTED' }
-  | { type: 'NOTE_MATCHED'; payload: { isPerfect: boolean; technique?: unknown; observations?: Observation[] } }
+  | { type: 'NOTE_MATCHED'; payload: { isPerfect: boolean; technique?: NoteTechnique; observations?: Observation[] } }
   | { type: 'JUMP_TO_NOTE'; payload: { index: number } }
   | { type: 'UPDATE_METRONOME'; payload: Partial<MetronomeConfig> }
   | { type: 'UPDATE_LOOP_REGION'; payload: Partial<LoopRegion> }
