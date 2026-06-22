@@ -8,22 +8,33 @@ import { Hertz, Cents } from './musical-domain'
 import { CircularBuffer } from 'mnemonist'
 
 /**
+ * Violin-specific domain constants.
+ *
+ * @remarks
+ * The violin range is G3 (196Hz) to E7 (~2637Hz).
+ * Tolerance for "in-tune" is usually ±15 cents for professional practice.
+ */
+export const VIOLIN_TOLERANCE_CENTS = 15 as Cents
+
+/**
  * Represents a single frame of pitch analysis.
  *
  * @remarks
  * Used to communicate pitch data between the DSP engine and the domain.
+ * Uses readonly properties to ensure immutability.
  */
 export interface PitchFrame {
-  frequency: Hertz
-  centsDeviation: Cents
-  confidence: number
-  timestamp: number
+  readonly frequency: Hertz
+  readonly centsDeviation: Cents
+  readonly confidence: number
+  readonly timestamp: number
 }
 
 /**
  * A reusable, mutable PitchFrame to avoid allocation in 60FPS loop.
+ * @internal - For performance critical loops only.
  */
-export const SHARED_PITCH_FRAME: PitchFrame = {
+export const SHARED_PITCH_FRAME = {
   frequency: 0 as Hertz,
   centsDeviation: 0 as Cents,
   confidence: 0,
@@ -62,16 +73,16 @@ export class FixedRingBuffer<T, N extends number> {
 
   /**
    * Returns a read-only snapshot of the current buffer contents.
+   * MAINTAINS NEWEST-TO-OLDEST ORDER.
    *
    * @returns A readonly array of items.
    */
   toArray(): readonly T[] {
-    // Note: CircularBuffer.toArray() returns items in insertion order (oldest to newest).
-    // The previous implementation returned them in REVERSE insertion order (newest to oldest).
-    // We maintain that semantic for compatibility.
-    const result: T[] = []
+    const size = this.buffer.size
+    const result: T[] = new Array(size)
+    let i = size - 1
     this.buffer.forEach((item: T) => {
-      result.unshift(item)
+      result[i--] = item
     })
     return result
   }
