@@ -106,3 +106,70 @@
 * [x] **5.2. Implementación del Núcleo de Almacenamiento en `lib/persistence/persistence-core.ts**`
 * [x] Desarrollar el adaptador concreto para `LocalStorage` o `IndexedDB` encapsulado tras las firmas del puerto.
 * [x] Garantizar operaciones de lectura/escritura asíncronas para evitar bloqueos del hilo principal del juego durante el autoguardado.
+
+---
+
+## 🛠️ Fase 6: Modernización y Sustitución por Librerías Especializadas
+
+**Objetivo:** Reducir deuda técnica y aumentar la robustez mediante la integración de estándares de la industria.
+**Asignado a:** `Systems Architect`
+
+* [x] **6.1. Refactorización de Estructuras de Datos (Domain)**
+    * [x] Sustituir `FixedRingBuffer` por `CircularBuffer` de `mnemonist` en `lib/domain/data-structures.ts`.
+* [x] **6.2. Integración de Manejo Funcional de Errores e Inmutabilidad (Application)**
+    * [x] Refactorizar `lib/practice-core.ts` para usar `neverthrow` (`Result`, `ok`, `err`) en lugar de excepciones imperativas.
+    * [x] Implementar `immer` (`produce`) en el reducer `reducePracticeEvent` para eliminar spreads manuales.
+
+* [ ] **6.3. Pipeline Reactivo y Máquinas de Estado (Application/Infrastructure)**
+    * [ ] Diseñar el `AudioPipeline` usando `rxjs` en `lib/ports/audio.port.ts`.
+    * [ ] Implementar `xstate` para el `NoteSegmenter` (SILENCE ↔ NOTE) y el ciclo de vida de la sesión.
+
+* [ ] **6.4. Análisis Estadístico y Extracción de Features (Domain/Infrastructure)**
+    * [ ] Sustituir cálculos manuales de desviación y regresión por `simple-statistics` en el `TechniqueAgent`.
+    * [ ] Integrar `meyda` para el análisis espectral y `pitchy` para el algoritmo de detección YIN/MPM.
+
+* [ ] **6.5. Motor de Audio y Persistencia Reactiva (Infrastructure/Adapters)**
+    * [ ] Migrar el metrónomo y scheduling a `tone.js`.
+    * [ ] Consolidar los stores de Zustand en Slices o migrar a `@tanstack/store`.
+
+---
+
+## 🧠 Fase 7: Análisis de Técnica y Agentes de IA Musical
+
+**Objetivo:** Proporcionar feedback inteligente al usuario mediante el análisis avanzado de señales y heurísticas musicales.
+**Asignado a:** `AI & Signal Specialist`
+
+* [ ] **7.1. Agente de Análisis de Técnica (Domain)**
+    * [ ] Implementar el `TechniqueAgent` usando `simple-statistics` para detectar:
+        * [ ] **Estabilidad de Tono:** Varianza y desviación estándar de los *cents* durante una nota mantenida.
+        * [ ] **Vibrato:** Análisis de frecuencia fundamental (regresión sinusoidal simple) para medir velocidad y amplitud del vibrato.
+        * [ ] **Estabilidad de Arco (Voz/Violín):** Análisis de la envolvente de amplitud (RMS) para detectar "temblores" o cortes no deseados.
+
+* [ ] **7.2. Extracción de Timbre (Infrastructure)**
+    * [ ] Configurar `meyda` para extraer features espectrales:
+        * [ ] `spectralCentroid`: Para medir el "brillo" del sonido.
+        * [ ] `spectralFlatness`: Para distinguir entre tono puro y ruido (aire en la voz, raspado en el violín).
+    * [ ] Mapear estas métricas a observaciones de dominio (ej. "Tono brillante", "Mucho aire").
+
+* [ ] **7.3. Generador de Heurísticas de Feedback (Application)**
+    * [ ] Diseñar el motor de reglas que consume `TechniqueMetrics` y genera `Observations` amigables para el usuario.
+    * [ ] Implementar la lógica de "Mejor Nota" y "Nota con Mayor Dificultad" basada en precisión histórica de la sesión.
+
+---
+
+## 📈 Fase 8: Ecosistema de Estado y Persistencia Evolucionada
+
+**Objetivo:** Centralizar la gestión del estado y garantizar una persistencia robusta y escalable.
+**Asignado a:** `Fullstack Architect`
+
+* [ ] **8.1. Consolidación del Almacenamiento de Estado (Adapters)**
+    * [ ] Unificar los 8 stores actuales de Zustand en un único `GlobalStore` usando Slices o migrar a `@tanstack/store` para una integración más profunda con el pipeline reactivo.
+    * [ ] Implementar selectores memorizados para evitar re-renderizados innecesarios en la UI de alta frecuencia.
+
+* [ ] **8.2. Adaptador de Persistencia de Alta Disponibilidad (Infrastructure)**
+    * [ ] Implementar un sistema de versionado de esquemas en `PersistenceCore` para manejar migraciones de datos de usuario.
+    * [ ] Crear una cola de persistencia asíncrona que priorice la fluidez del juego frente a la escritura en disco.
+
+* [ ] **8.3. Visualización de Progreso y Analíticas (Application/Adapters)**
+    * [ ] Crear estructuras de datos para tendencias a largo plazo (ej. mejora en la afinación de la cuerda Sol durante 30 días).
+    * [ ] Diseñar el adaptador para exportar datos de sesión en formatos estándar (JSON/CSV) para análisis externo.
