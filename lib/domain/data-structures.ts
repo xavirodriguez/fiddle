@@ -29,6 +29,7 @@ export interface MutablePitchFrame {
 
 /**
  * A reusable, mutable PitchFrame to avoid allocation in 60FPS loop.
+ * @internal - For performance critical loops only.
  */
 export const SHARED_PITCH_FRAME: MutablePitchFrame = {
   frequency: 0 as Hertz,
