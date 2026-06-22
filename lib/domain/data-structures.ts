@@ -4,69 +4,100 @@
  * Provides specialized, type-safe data structures for domain-specific needs.
  */
 
+import { Hertz, Cents } from './musical-domain'
+import { CircularBuffer } from 'mnemonist'
+
+/**
+ * Violin-specific domain constants.
+ *
+ * @remarks
+ * The violin range is G3 (196Hz) to E7 (~2637Hz).
+ * Tolerance for "in-tune" is usually ±15 cents for professional practice.
+ */
+export const VIOLIN_TOLERANCE_CENTS = 15 as Cents
+
+/**
+ * Represents a single frame of pitch analysis.
+ *
+ * @remarks
+ * Used to communicate pitch data between the DSP engine and the domain.
+ * Uses readonly properties to ensure immutability.
+ */
+export interface PitchFrame {
+  readonly frequency: Hertz
+  readonly centsDeviation: Cents
+  readonly confidence: number
+  readonly timestamp: number
+}
+
+/**
+ * A reusable, mutable PitchFrame to avoid allocation in 60FPS loop.
+ * @internal - For performance critical loops only.
+ */
+export const SHARED_PITCH_FRAME = {
+  frequency: 0 as Hertz,
+  centsDeviation: 0 as Cents,
+  confidence: 0,
+  timestamp: 0,
+}
+
 /**
  * A fixed-size circular buffer that automatically discards the oldest elements.
  * Useful for tracking detection history without unbounded memory growth.
  *
  * @remarks
- * Refactored for better type safety and immutability.
+ * Uses mnemonist CircularBuffer for high performance.
  * T - The type of elements in the buffer.
  * N - The maximum size of the buffer.
  */
 export class FixedRingBuffer<T, N extends number> {
-  private items: T[] = []
+  private buffer: CircularBuffer<T>
 
   /**
    * @param maxSize - The maximum number of elements the buffer can hold.
    */
-  constructor(public readonly maxSize: N) {}
+  constructor(public readonly maxSize: N) {
+    this.buffer = new CircularBuffer(Array, maxSize)
+  }
 
   /**
-   * Adds one or more items to the front of the buffer, displacing the oldest.
+   * Adds one or more items to the buffer, displacing the oldest.
    *
    * @param items - The items to add.
    */
   push(...items: T[]): void {
-    // We add to the front to match the existing pattern in PracticeState.
-    // If multiple items are pushed, we assume the last one in the arguments is the newest.
-    const reversedNewItems = [...items].reverse()
-    this.items = [...reversedNewItems, ...this.items].slice(0, this.maxSize)
+    for (const item of items) {
+      this.buffer.push(item)
+    }
   }
 
   /**
    * Returns a read-only snapshot of the current buffer contents.
+   * MAINTAINS NEWEST-TO-OLDEST ORDER.
    *
-   * @returns A readonly array of items. Mutations will not affect the buffer.
+   * @returns A readonly array of items.
    */
   toArray(): readonly T[] {
-    const defensiveCopy = [...this.items]
-    const snapshot = defensiveCopy
-    const readonlySnapshot: readonly T[] = snapshot
-
-    return readonlySnapshot
+    const size = this.buffer.size
+    const result: T[] = new Array(size)
+    let i = size - 1
+    this.buffer.forEach((item: T) => {
+      result[i--] = item
+    })
+    return result
   }
 
   /**
    * Clears all items from the buffer.
    */
   clear(): void {
-    const emptyList: T[] = []
-    this.items = emptyList
-    const isCleared = this.items.length === 0
-
-    if (!isCleared) {
-      throw new Error('Buffer clear failed')
-    }
+    this.buffer.clear()
   }
 
   /**
    * Returns the number of items currently in the buffer.
    */
   get length(): number {
-    const currentItems = this.items
-    const count = currentItems.length
-    const result = count
-
-    return result
+    return this.buffer.size
   }
 }
