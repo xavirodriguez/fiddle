@@ -43,30 +43,35 @@ export class WebAudioAdapter implements AudioCapturePort {
         },
       })
 
-      this.source = this.audioContext.createMediaStreamAudioSource(this.stream)
+      const source = this.audioContext.createMediaStreamSource(this.stream)
+      this.source = source
 
-      this.filter = this.audioContext.createBiquadFilter()
-      this.filter.type = 'bandpass'
-      this.filter.frequency.value = 1400
-      this.filter.Q.value = 0.5
+      const filter = this.audioContext.createBiquadFilter()
+      filter.type = 'bandpass'
+      filter.frequency.value = 1400
+      filter.Q.value = 0.5
+      this.filter = filter
 
-      this.compressor = this.audioContext.createDynamicsCompressor()
-      this.compressor.threshold.value = -24
-      this.compressor.knee.value = 30
-      this.compressor.ratio.value = 12
-      this.compressor.attack.value = 0.003
-      this.compressor.release.value = 0.25
+      const compressor = this.audioContext.createDynamicsCompressor()
+      compressor.threshold.value = -24
+      compressor.knee.value = 30
+      compressor.ratio.value = 12
+      compressor.attack.value = 0.003
+      compressor.release.value = 0.25
+      this.compressor = compressor
 
-      this.source.connect(this.filter)
-      this.filter.connect(this.compressor)
+      source.connect(filter)
+      filter.connect(compressor)
 
       this.emit('statechange', 'initialized')
       return ok(undefined)
     } catch (e) {
-      return err(new AppError({
-        message: e instanceof Error ? e.message : 'Unknown hardware error',
-        code: ERROR_CODES.DATA_VALIDATION_ERROR
-      }))
+      return err(
+        new AppError({
+          message: e instanceof Error ? e.message : 'Unknown hardware error',
+          code: ERROR_CODES.DATA_VALIDATION_ERROR,
+        })
+      )
     }
   }
 
@@ -81,18 +86,29 @@ export class WebAudioAdapter implements AudioCapturePort {
       await this.initialize()
     }
 
-    if (this.audioContext?.state === 'suspended') {
-      await this.audioContext.resume()
+    const ctx = this.audioContext
+    const comp = this.compressor
+
+    if (!ctx || !comp) {
+      throw new AppError({
+        message: 'Audio system not properly initialized',
+        code: ERROR_CODES.DATA_VALIDATION_ERROR,
+      })
     }
 
-    this.workletNode = new AudioWorkletNode(this.audioContext!, 'capture-processor')
-    this.workletNode.port.onmessage = (event) => {
+    if (ctx.state === 'suspended') {
+      await ctx.resume()
+    }
+
+    const workletNode = new AudioWorkletNode(ctx, 'capture-processor')
+    workletNode.port.onmessage = (event) => {
       onFrame(event.data)
     }
 
-    this.compressor!.connect(this.workletNode)
-    this.workletNode.connect(this.audioContext!.destination)
+    comp.connect(workletNode)
+    workletNode.connect(ctx.destination)
 
+    this.workletNode = workletNode
     this.emit('statechange', 'streaming')
   }
 
