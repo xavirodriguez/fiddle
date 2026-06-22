@@ -1,35 +1,95 @@
 "use client"
 
 /**
- * PracticeContainer — "Smart" orchestrator component (stub for Paso 1).
+ * PracticeContainer — Smart orchestrator.
  *
- * This shell wires the toolbar to placeholder handlers so the route renders
- * without errors. Dynamic OSMD import and FeedbackOverlay will be connected
- * in subsequent steps.
+ * Wires the toolbar controls to the Zustand practice store and renders the
+ * sheet music area. OSMD is loaded lazily via `next/dynamic` so it never
+ * blocks the initial page paint.
  */
 
-import { useState } from 'react'
+import dynamic from 'next/dynamic'
+import { usePracticeStore } from '@/stores/practice-store'
 import { PracticeToolbar } from './practice-toolbar'
 
+// ---------------------------------------------------------------------------
+// Lazy OSMD wrapper — loaded only on the client, no SSR.
+// The heavy opensheetmusicdisplay bundle is split into its own chunk.
+// ---------------------------------------------------------------------------
+
+const SheetMusicWrapper = dynamic(
+  () =>
+    import('./sheet-music-wrapper').then((mod) => ({ default: mod.SheetMusicWrapper })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-muted-foreground">Cargando partitura…</p>
+      </div>
+    ),
+  },
+)
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function PracticeContainer() {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isLoopEnabled, setIsLoopEnabled] = useState(false)
+  const practiceState = usePracticeStore((s) => s.practiceState)
+  const nextNote = usePracticeStore((s) => s.nextNote)
+  const prevNote = usePracticeStore((s) => s.prevNote)
+  const internalUpdate = usePracticeStore((s) => s.internalUpdate)
+
+  const isPlaying = practiceState.status !== 'idle' && practiceState.status !== 'completed'
+  const isLoopEnabled = practiceState.loopRegion?.isEnabled ?? false
+
+  function handleTogglePlay() {
+    if (isPlaying) {
+      internalUpdate({ type: 'STOP' })
+    } else {
+      internalUpdate({ type: 'START' })
+    }
+  }
+
+  function handleReset() {
+    internalUpdate({ type: 'RESET' })
+  }
+
+  function handleToggleLoop() {
+    internalUpdate({
+      type: 'UPDATE_LOOP_REGION',
+      payload: { isEnabled: !isLoopEnabled },
+    })
+  }
+
+  function handleScoreReady(totalNotes: number) {
+    // Reserved for future use: e.g. update store boundary, enable nav buttons.
+    void totalNotes
+  }
+
+  function handleScoreError(error: Error) {
+    console.error('[PracticeContainer] OSMD load error:', error)
+  }
 
   return (
     <div className="flex h-full w-full flex-col">
       <PracticeToolbar
         isPlaying={isPlaying}
         isLoopEnabled={isLoopEnabled}
-        onTogglePlay={() => setIsPlaying((v) => !v)}
-        onReset={() => setIsPlaying(false)}
-        onPrevNote={() => {}}
-        onNextNote={() => {}}
-        onToggleLoop={() => setIsLoopEnabled((v) => !v)}
+        onTogglePlay={handleTogglePlay}
+        onReset={handleReset}
+        onPrevNote={prevNote}
+        onNextNote={nextNote}
+        onToggleLoop={handleToggleLoop}
       />
 
-      {/* Sheet music area — SheetMusicWrapper will mount here in Paso 2 */}
-      <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-background">
-        <p className="text-sm text-muted-foreground">Cargando partitura…</p>
+      <div className="relative flex flex-1 overflow-hidden bg-background">
+        <SheetMusicWrapper
+          musicXml={null}
+          cursorIndex={practiceState.currentIndex}
+          onReady={handleScoreReady}
+          onError={handleScoreError}
+        />
       </div>
     </div>
   )
