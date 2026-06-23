@@ -8,19 +8,22 @@
  * blocks the initial page paint.
  */
 
+import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { usePracticeStore } from '@/stores/practice-store'
 import { PracticeToolbar } from './practice-toolbar'
 import { FeedbackOverlay } from './feedback-overlay'
+import { ScoreViewerRef } from './score-viewer'
+import { practiceService } from '@/lib/practice/practice-service'
+import { audioManager } from '@/lib/infrastructure/audio-manager'
 
 // ---------------------------------------------------------------------------
-// Lazy OSMD wrapper — loaded only on the client, no SSR.
-// The heavy opensheetmusicdisplay bundle is split into its own chunk.
+// Lazy ScoreViewer — loaded only on the client, no SSR.
 // ---------------------------------------------------------------------------
 
-const SheetMusicWrapper = dynamic(
+const ScoreViewer = dynamic(
   () =>
-    import('./sheet-music-wrapper').then((mod) => ({ default: mod.SheetMusicWrapper })),
+    import('./score-viewer').then((mod) => ({ default: mod.ScoreViewer })),
   {
     ssr: false,
     loading: () => (
@@ -40,14 +43,21 @@ export function PracticeContainer() {
   const nextNote = usePracticeStore((s) => s.nextNote)
   const prevNote = usePracticeStore((s) => s.prevNote)
   const internalUpdate = usePracticeStore((s) => s.internalUpdate)
+  const scoreRef = useRef<ScoreViewerRef>(null)
 
   const isPlaying = practiceState.status !== 'idle' && practiceState.status !== 'completed'
   const isLoopEnabled = practiceState.loopRegion?.isEnabled ?? false
 
-  function handleTogglePlay() {
+  async function handleTogglePlay() {
     if (isPlaying) {
+      practiceService.stop()
       internalUpdate({ type: 'STOP' })
     } else {
+      await audioManager.initialize()
+      await practiceService.initialize(practiceState.exercise, (event) => {
+        scoreRef.current?.nextStep()
+      })
+      await practiceService.start()
       internalUpdate({ type: 'START' })
     }
   }
@@ -91,9 +101,8 @@ export function PracticeContainer() {
         receives no pitch props — FeedbackOverlay owns all real-time data.
       */}
       <div className="relative flex flex-1 overflow-hidden bg-background">
-        <SheetMusicWrapper
-          musicXml={null}
-          cursorIndex={practiceState.currentIndex}
+        <ScoreViewer
+          ref={scoreRef}
           onReady={handleScoreReady}
           onError={handleScoreError}
         />
