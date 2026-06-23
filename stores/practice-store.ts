@@ -84,6 +84,16 @@ export interface PracticeStore {
 
   /** Convenience: move cursor back one note. */
   prevNote: () => void
+
+  /** Real-time musical sync state. */
+  syncState: {
+    currentMeasure: number
+    currentMidiTarget: number | null
+    isCorrectPitch: boolean
+  }
+
+  /** Update real-time sync state without full reducer overhead. */
+  updateSync: (sync: Partial<PracticeStore['syncState']>) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -93,10 +103,21 @@ export interface PracticeStore {
 export const usePracticeStore = create<PracticeStore>((set, get) => ({
   practiceState: INITIAL_PRACTICE_STATE,
   requiredHoldTime: 300,
+  syncState: {
+    currentMeasure: 0,
+    currentMidiTarget: null,
+    isCorrectPitch: false,
+  },
 
   internalUpdate(event: PracticeEvent) {
     set((state) => ({
       practiceState: reducePracticeEvent(state.practiceState, event),
+    }))
+  },
+
+  updateSync(sync) {
+    set((state) => ({
+      syncState: { ...state.syncState, ...sync },
     }))
   },
 

@@ -4,12 +4,15 @@ import { usePracticeStore } from '@/stores/practice-store'
 import { useTunerStore } from '@/stores/tuner-store'
 import { MusicalNote, formatPitchName } from '../practice-core'
 import { lerp, Hertz, Cents, frequencyToMidi } from '../domain/musical-domain'
-import { Note as TargetNote } from '../domain/exercise'
+import { Note as TargetNote, Exercise } from '../domain/exercise'
 import { DetectedNote, PracticeState } from '../domain/practice'
 import { NoteTechnique } from '../technique-types'
 import { SHARED_PITCH_FRAME, MutablePitchFrame, PitchFrame } from '../domain/data-structures'
 import { practiceMachine } from './practice-machine'
 import { createActor } from 'xstate'
+import { TimelineSynchronizer, MusicalEvent } from './timeline-synchronizer'
+import { ToneBridge, Seconds } from '../audio/tone-bridge'
+import * as Tone from 'tone'
 
 /**
  * PracticeService
@@ -29,6 +32,8 @@ export class PracticeService {
   private cachedExerciseId: string = ''
   private smoothedFrequency: number = 0
   private readonly SMOOTHING_FACTOR = 0.2
+  private synchronizer = new TimelineSynchronizer()
+  private onNoteTriggered: ((event: MusicalEvent) => void) | null = null
 
   private actor = createActor(practiceMachine, {
     actions: {
@@ -46,9 +51,19 @@ export class PracticeService {
   })
 
   /**
-   * Starts the audio processing loop.
+   * Initializes the synchronizer and Tone.js bridge.
    */
-  start() {
+  async initialize(exercise: Exercise, onNoteTriggered: (event: MusicalEvent) => void) {
+    await ToneBridge.initialize()
+    this.synchronizer.compile(exercise)
+    this.onNoteTriggered = onNoteTriggered
+    this.synchronizer.schedule(onNoteTriggered)
+  }
+
+  /**
+   * Starts the audio processing loop and playback.
+   */
+  async start() {
     this.stop()
     const context = audioManager.getContext()
     if (!context) {
@@ -58,11 +73,16 @@ export class PracticeService {
 
     this.actor.start()
     this.detector = new PitchDetector(context.sampleRate)
+
+    // Resume Tone.js Transport
+    await Tone.start()
+    Tone.getTransport().start()
+
     this.loop()
   }
 
   /**
-   * Stops the audio processing loop.
+   * Stops the audio processing loop and playback.
    */
   stop() {
     if (this.rafId !== null) {
@@ -70,6 +90,7 @@ export class PracticeService {
       this.rafId = null
     }
     this.actor.stop()
+    Tone.getTransport().stop()
   }
 
   private loop = () => {
@@ -96,13 +117,33 @@ export class PracticeService {
     const context = audioManager.getContext()
     if (!context) return
 
-    const now = context.currentTime
+    const now = context.currentTime as Seconds
     const store = usePracticeStore.getState()
     const tuner = useTunerStore.getState()
     const shouldUpdateStore = now - this.lastUpdateTime > this.UPDATE_INTERVAL_SEC
 
     if (result.pitchHz > 0 && result.confidence > 0.7) {
       tuner.updatePitch(result.pitchHz, result.confidence)
+
+      // Perform real-time sync verification
+      const verification = this.synchronizer.verify(now, frequencyToMidi(result.pitchHz as Hertz).unwrapOr(0 as any))
+
+      // Only update store if the musical state has changed to avoid 60FPS React thrashing
+      const sync = store.syncState
+      const nextMeasure = this.synchronizer.getTimeline()[verification.currentNoteIndex]?.measureIndex || 0
+
+      if (
+        sync.currentMeasure !== nextMeasure ||
+        sync.currentMidiTarget !== verification.expectedMidi ||
+        sync.isCorrectPitch !== verification.isCorrectPitch
+      ) {
+        store.updateSync({
+          currentMeasure: nextMeasure,
+          currentMidiTarget: verification.expectedMidi,
+          isCorrectPitch: verification.isCorrectPitch,
+        })
+      }
+
       this.handlePitchDetected(result, now, shouldUpdateStore)
     } else {
       tuner.updatePitch(0, 0)
