@@ -1,43 +1,43 @@
 /**
  * Signal Tester Utility
  *
- * Provides synthetic signal generation for validating DSP algorithms
- * and mathematical domain logic.
+ * Proporciona generación de señales sintéticas para validar algoritmos DSP
+ * y lógica matemática del dominio.
  */
 
 /**
- * Generates a synthetic violin-like signal.
+ * Genera una señal sintética de violín compleja.
  *
  * @remarks
- * Combines a fundamental frequency with a second harmonic at double the volume
- * to test robustness against octave doubling.
+ * Combina una frecuencia fundamental con un segundo armónico con el doble de volumen
+ * para probar la robustez del algoritmo ante la duplicación de octava.
  *
- * @param fundamentalHz - The fundamental frequency in Hertz.
- * @param sampleRate - The sample rate in Hz (e.g., 44100).
- * @param durationSeconds - Duration of the signal in seconds.
+ * @param fundamentalHz - Frecuencia fundamental en Hertz.
+ * @param sampleRate - Tasa de muestreo (ej. 44100).
+ * @param durationSeconds - Duración en segundos.
  *
- * @returns A Float32Array containing the normalized signal.
+ * @returns Float32Array con la señal normalizada.
  */
 export function generateSyntheticViolinSignal(
   fundamentalHz: number,
   sampleRate: number,
   durationSeconds: number
 ): Float32Array {
-  const numSamples = Math.floor(sampleRate * durationSeconds)
-  const buffer = new Float32Array(numSamples)
+  const numSamples = Math.floor(sampleRate * durationSeconds);
+  const buffer = new Float32Array(numSamples);
 
   for (let i = 0; i < numSamples; i++) {
-    const t = i / sampleRate
+    const t = i / sampleRate;
 
     // Fundamental: A = 1.0
-    const fundamental = Math.sin(2 * Math.PI * fundamentalHz * t)
+    const fundamental = Math.sin(2 * Math.PI * fundamentalHz * t);
 
-    // Second Harmonic (Octave): A = 2.0 (as per strict instructions)
-    const secondHarmonic = 2.0 * Math.sin(2 * Math.PI * (fundamentalHz * 2) * t)
+    // Segundo Armónico (Octava): A = 2.0 (como se solicita en la Fase 3)
+    const secondHarmonic = 2.0 * Math.sin(2 * Math.PI * (fundamentalHz * 2) * t);
 
-    // Combine and normalize to [-1.0, 1.0] range
-    buffer[i] = (fundamental + secondHarmonic) / 3.0
+    // Combinar y normalizar al rango [-1.0, 1.0]
+    buffer[i] = (fundamental + secondHarmonic) / 3.0;
   }
 
-  return buffer
+  return buffer;
 }
