@@ -1,75 +1,117 @@
-import { Hertz, Cents } from './musical-domain'
-import { CircularBuffer } from 'mnemonist'
+import { Hertz, Cents } from './musical-domain';
 
 /**
  * Violin-specific domain constants.
+ * Professional intonation tolerance is typically within 15 cents.
  */
-export const VIOLIN_TOLERANCE_CENTS = 15 as Cents
+export const VIOLIN_TOLERANCE_CENTS = 15 as Cents;
 
 /**
- * Represents a single frame of pitch analysis.
+ * Represents a discrete frame of pitch analysis at a specific point in time.
+ * This structure is immutable for domain logic.
  */
 export interface PitchFrame {
-  readonly frequency: Hertz
-  readonly centsDeviation: Cents
-  readonly confidence: number
-  readonly timestamp: number
+  readonly frequency: Hertz;
+  readonly centsDeviation: Cents;
+  readonly confidence: number;
+  readonly timestamp: number; // Linked to AudioContext.currentTime
 }
 
 /**
- * Internal mutable version of PitchFrame for performance-critical loops.
- * @internal
+ * Mutable version of PitchFrame for performance-critical DSP loops.
+ * Used with SHARED_PITCH_FRAME to avoid object allocation in the hot path.
  */
 export interface MutablePitchFrame {
-  frequency: Hertz
-  centsDeviation: Cents
-  confidence: number
-  timestamp: number
+  frequency: Hertz;
+  centsDeviation: Cents;
+  confidence: number;
+  timestamp: number;
 }
 
 /**
- * A reusable, mutable PitchFrame to avoid allocation in 60FPS loop.
- * @internal - For performance critical loops only.
+ * Pre-allocated shared object to be reused across analysis frames (Zero-Allocation).
+ * @internal
  */
 export const SHARED_PITCH_FRAME: MutablePitchFrame = {
   frequency: 0 as Hertz,
   centsDeviation: 0 as Cents,
   confidence: 0,
   timestamp: 0,
-}
+};
 
 /**
- * A fixed-size circular buffer that automatically discards the oldest elements.
+ * Performance-optimized Ring Buffer for real-time analysis windows.
+ *
+ * DESIGN DECISIONS:
+ * 1. Zero-Allocation: Uses a pre-allocated array and manual index tracking.
+ * 2. Pure Domain: No external dependencies (Mnemonist removed).
+ * 3. Cache-Friendly: Iteration via forEach avoids array copies.
  */
-export class FixedRingBuffer<T, N extends number> {
-  private buffer: CircularBuffer<T>
+export class FixedRingBuffer<T> {
+  private readonly buffer: T[];
+  private head: number = 0;
+  private size: number = 0;
 
-  constructor(public readonly maxSize: N) {
-    this.buffer = new CircularBuffer(Array, maxSize)
+  constructor(public readonly maxSize: number) {
+    this.buffer = new Array(maxSize);
   }
 
-  push(...items: T[]): void {
-    for (const item of items) {
-      this.buffer.push(item)
+  /**
+   * Pushes a single item into the buffer.
+   * Avoids rest parameters (...) to prevent temporary array allocation.
+   */
+  push(item: T): void {
+    this.buffer[this.head] = item;
+    this.head = (this.head + 1) % this.maxSize;
+    if (this.size < this.maxSize) {
+      this.size++;
     }
   }
 
-  toArray(): readonly T[] {
-    // Uses native toArray and reverse to avoid manual loops and provide newest-first order
-    // We cast to T[] to ensure compatibility with the readonly T[] return type
-    return (this.buffer.toArray() as T[]).reverse()
-  }
-
+  /**
+   * High-performance iteration from newest to oldest.
+   * Avoids .toArray() and .reverse() to prevent allocations in the hot path.
+   */
   forEach(callback: (item: T, index: number) => void): void {
-    // Uses native toArray/reverse/forEach to eliminate manual loop logic
-    ;(this.buffer.toArray() as T[]).reverse().forEach(callback)
+    if (this.size === 0) return;
+
+    for (let i = 0; i < this.size; i++) {
+      // Calculate index from newest to oldest
+      const index = (this.head - 1 - i + this.maxSize) % this.maxSize;
+      callback(this.buffer[index], i);
+    }
   }
 
+  /**
+   * Returns the most recently added item without removing it.
+   */
+  peek(): T | undefined {
+    if (this.size === 0) return undefined;
+    const lastIndex = (this.head - 1 + this.maxSize) % this.maxSize;
+    return this.buffer[lastIndex];
+  }
+
+  /**
+   * Clears the buffer logically (O(1)).
+   */
   clear(): void {
-    this.buffer.clear()
+    this.head = 0;
+    this.size = 0;
   }
 
   get length(): number {
-    return this.buffer.size
+    return this.size;
+  }
+
+  /**
+   * ONLY FOR TESTS OR NON-PERFORMANCE CRITICAL PATHS.
+   * Allocates a new array.
+   */
+  toArray(): readonly T[] {
+    const result: T[] = new Array(this.size);
+    this.forEach((item, i) => {
+      result[i] = item;
+    });
+    return result;
   }
 }
