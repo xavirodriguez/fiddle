@@ -1,3 +1,6 @@
+import { audioManager } from '../infrastructure/audio-manager'
+import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
+import { PitchDetector, PitchDetectionResult } from '../pitch-detector'
 import { usePracticeStore } from '@/stores/practice-store'
 import { useTunerStore } from '@/stores/tuner-store'
 import { MusicalNote, formatPitchName } from '../practice-core'
@@ -9,6 +12,8 @@ import { practiceMachine, PracticeEvent } from './practice-machine'
 import { createActor } from 'xstate'
 import { TimelineSynchronizer, MusicalEvent } from './timeline-synchronizer'
 import { ToneBridge, Seconds } from '../audio/tone-bridge'
+import { audioPipeline, RawPitchEvent } from '../audio/audio-pipeline'
+import { Subscription } from 'rxjs'
 import * as Tone from 'tone'
 import { AudioPipeline } from '../audio/audio-pipeline'
 import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
@@ -17,15 +22,13 @@ import { Subscription } from 'rxjs'
 /**
  * PracticeService
  *
- * A simplified service that manages the real-time audio loop for the practice session.
- * It uses XState for robust state management and an RxJS pipeline for audio processing.
+ * Orchestrates the real-time audio pipeline and practice session logic.
+ * Uses RxJS for reactive audio events and XState for session state.
  */
 export class PracticeService {
-  private pipeline: AudioPipeline | null = null
-  private subscription: Subscription | null = null
-  private segmenterSubscription: Subscription | null = null
-  private lastUpdateTime = 0 // In AudioContext.currentTime (seconds)
-  private readonly UPDATE_INTERVAL_SEC = 0.1 // 10Hz update rate for store
+  private detector: PitchDetector | null = null
+  private lastUpdateTime = 0
+  private readonly UPDATE_INTERVAL_SEC = 0.1
   private cachedTargetNote: TargetNote | null = null
   private cachedTargetPitch: string | null = null
   private cachedIndex: number = -1
@@ -34,6 +37,8 @@ export class PracticeService {
   private readonly SMOOTHING_FACTOR = 0.2
   private synchronizer = new TimelineSynchronizer()
   private onNoteTriggered: ((event: MusicalEvent) => void) | null = null
+  private pipelineSubscription: Subscription | null = null
+  private audioAdapter: WebAudioAdapter = new WebAudioAdapter()
 
   /** Pre-allocated event object for the practice machine */
   private readonly REUSABLE_PITCH_EVENT: Extract<PracticeEvent, { type: 'PITCH_DETECTED' }> = {
@@ -42,6 +47,7 @@ export class PracticeService {
   }
 
   private actor = createActor(practiceMachine, {
+    // @ts-ignore - XState v5 types can be strict with provide/actions
     actions: {
       notifySuccess: () => {
         const store = usePracticeStore.getState()
@@ -56,127 +62,90 @@ export class PracticeService {
     },
   })
 
-  /**
-   * Initializes the synchronizer and Tone.js bridge.
-   */
   async initialize(exercise: Exercise, onNoteTriggered: (event: MusicalEvent) => void) {
     await ToneBridge.initialize()
+    await this.audioAdapter.initialize()
     this.synchronizer.compile(exercise)
     this.onNoteTriggered = onNoteTriggered
-    this.synchronizer.schedule(onNoteTriggered)
+    this.detector = new PitchDetector(this.audioAdapter.sampleRate)
 
-    // Initialize AudioPipeline with WebAudioAdapter
-    const adapter = new WebAudioAdapter()
-    await adapter.initialize()
-    this.pipeline = new AudioPipeline(adapter)
+    // Setup RxJS Pipeline Subscription
+    this.pipelineSubscription = audioPipeline.pitchFrame$.subscribe(frame => {
+      this.processFrame(frame)
+    })
   }
 
-  /**
-   * Starts the audio processing loop and playback.
-   */
   async start() {
-    await this.stop()
-    if (!this.pipeline) {
-      console.warn('[PracticeService] Pipeline not initialized')
-      return
-    }
-
     this.actor.start()
 
-    // Resume Tone.js Transport
+    // Start Tone Transport
     await Tone.start()
     Tone.getTransport().start()
 
-    // Subscribe to pipeline pitch events
-    this.subscription = this.pipeline.pitch$.subscribe((frame) => {
-      this.processPitchFrame(frame)
+    // Start Audio Hardware Stream
+    await this.audioAdapter.startStream((result: any) => {
+      audioPipeline.push(result as RawPitchEvent)
     })
 
-    // Subscribe to note segmenter for high-level events
-    this.segmenterSubscription = this.pipeline.segmenter$.subscribe((state) => {
-      if (state.value === 'note') {
-        // Potentially handle note onset
-      } else if (state.value === 'silence') {
-        this.actor.send({ type: 'PITCH_LOST' })
-      }
+    // Schedule musical events in Tone.js Transport
+    this.synchronizer.schedule((event) => {
+      if (this.onNoteTriggered) this.onNoteTriggered(event)
     })
-
-    await this.pipeline.start()
   }
 
-  /**
-   * Stops the audio processing loop and playback.
-   */
-  async stop() {
-    this.subscription?.unsubscribe()
-    this.segmenterSubscription?.unsubscribe()
-    this.subscription = null
-    this.segmenterSubscription = null
-
-    if (this.pipeline) {
-      await this.pipeline.stop()
-    }
-
+  stop() {
     this.actor.stop()
+    this.audioAdapter.stopStream()
     Tone.getTransport().stop()
+    Tone.getTransport().cancel() // Clear scheduled events
   }
 
-  private processPitchFrame(frame: PitchFrame) {
+  private processFrame(frame: PitchFrame) {
+    const now = frame.timestamp as Seconds
     const store = usePracticeStore.getState()
     const tuner = useTunerStore.getState()
     const now = frame.timestamp
     const shouldUpdateStore = now - this.lastUpdateTime > this.UPDATE_INTERVAL_SEC
 
-    if (frame.frequency > 0 && frame.confidence > 0.7) {
-      // Apply smooth interpolation (Task 4.3)
-      if (this.smoothedFrequency === 0) {
-        this.smoothedFrequency = frame.frequency
-      } else {
-        this.smoothedFrequency = lerp(this.smoothedFrequency, frame.frequency, this.SMOOTHING_FACTOR)
-      }
+    tuner.updatePitch(frame.frequency, frame.confidence)
 
-      // Update SHARED_PITCH_FRAME with smoothed data for consistent UI/Logic
-      const note = MusicalNote.fromFrequencyShared(this.smoothedFrequency)
-      SHARED_PITCH_FRAME.frequency = this.smoothedFrequency as Hertz
-      SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
-      // timestamp and confidence are already set by the pipeline in the shared frame
+    // Real-time sync verification
+    const verification = this.synchronizer.verify(now, frequencyToMidi(frame.frequency as Hertz).unwrapOr(0 as any))
 
-      tuner.updatePitch(this.smoothedFrequency, frame.confidence)
+    const sync = store.syncState
+      const nextMeasure = this.synchronizer.getTimeline()[verification.currentNoteIndex]?.measureIndex || 0
 
-      // Perform real-time sync verification using smoothed data
-      const verification = this.synchronizer.verify(now as Seconds, note.midiNumber)
-
-      // Only update store if the musical state has changed to avoid 60FPS React thrashing
-      const sync = store.syncState
-      const timeline = this.synchronizer.getTimeline()
-      const nextMeasure = timeline[verification.currentNoteIndex]?.measureIndex || 0
-
-      if (
-        sync.currentMeasure !== nextMeasure ||
-        sync.currentMidiTarget !== verification.expectedMidi ||
-        sync.isCorrectPitch !== verification.isCorrectPitch
-      ) {
-        store.updateSync({
-          currentMeasure: nextMeasure,
-          currentMidiTarget: verification.expectedMidi,
-          isCorrectPitch: verification.isCorrectPitch,
-        })
-      }
-
-      this.handlePitchDetected(SHARED_PITCH_FRAME as PitchFrame, shouldUpdateStore)
-    } else {
-      this.smoothedFrequency = 0
-      tuner.updatePitch(0, 0)
-      if (shouldUpdateStore) {
-        store.internalUpdate({ type: 'NO_NOTE_DETECTED' })
-        this.lastUpdateTime = now
-      }
+    if (
+      sync.currentMeasure !== nextMeasure ||
+      sync.currentMidiTarget !== verification.expectedMidi ||
+      sync.isCorrectPitch !== verification.isCorrectPitch
+    ) {
+      store.updateSync({
+        currentMeasure: nextMeasure,
+        currentMidiTarget: verification.expectedMidi,
+        isCorrectPitch: verification.isCorrectPitch,
+      })
     }
+
+    this.handlePitchDetected(frame, now, shouldUpdateStore)
   }
 
-  private handlePitchDetected(frame: PitchFrame, shouldUpdateStore: boolean) {
+  private handlePitchDetected(frame: PitchFrame, now: number, shouldUpdateStore: boolean) {
     const store = usePracticeStore.getState()
     const practiceState = store.practiceState
+
+    if (this.smoothedFrequency === 0) {
+      this.smoothedFrequency = frame.frequency
+    } else {
+      this.smoothedFrequency = lerp(this.smoothedFrequency, frame.frequency, this.SMOOTHING_FACTOR)
+    }
+
+    const note = MusicalNote.fromFrequencyShared(this.smoothedFrequency)
+
+    SHARED_PITCH_FRAME.frequency = this.smoothedFrequency as Hertz
+    SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
+    SHARED_PITCH_FRAME.timestamp = now
+    SHARED_PITCH_FRAME.confidence = frame.confidence
 
     this.updateTargetCache(practiceState)
 
@@ -191,9 +160,6 @@ export class PracticeService {
     this.actor.send(this.REUSABLE_PITCH_EVENT)
   }
 
-  /**
-   * Adapts a MutablePitchFrame to a DetectedNote structure.
-   */
   private mapFrameToDetectedNote(frame: MutablePitchFrame, pitchName: string): DetectedNote {
     return {
       pitch: pitchName,
@@ -223,6 +189,11 @@ export class PracticeService {
         }
       }
     }
+  }
+
+  cleanup() {
+    this.pipelineSubscription?.unsubscribe()
+    this.stop()
   }
 }
 

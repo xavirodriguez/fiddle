@@ -69,6 +69,7 @@ export class ToneBridge {
         Tone.setContext(toneContext)
 
         // Ensure the transport is synchronized with the context
+        // @ts-ignore - Some versions of Tone.js have context as read-only but it is necessary to set for synchronization
         Tone.getTransport().context = toneContext
 
         this.isInitialized = true

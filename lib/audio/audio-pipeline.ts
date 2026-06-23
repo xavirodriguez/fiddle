@@ -1,105 +1,88 @@
+import { Subject, Observable, pipe } from 'rxjs'
+import { filter, tap, share } from 'rxjs/operators'
+import { PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
+import { PitchDetectionResult } from '../pitch-detector'
+import { Hertz, Cents } from '../domain/musical-domain'
+import { createActor } from 'xstate'
+import { noteSegmenterMachine } from '../practice/note-segmenter-machine'
+
+/**
+ * RawPitchEvent
+ *
+ * Represents a raw detection result from the audio engine.
+ */
+export interface RawPitchEvent {
+  pitchHz: number
+  confidence: number
+  rms: number
+  spectralFlatness: number
+  spectralCentroid: number
+  timestamp: number
+}
+
 /**
  * AudioPipeline
  *
- * Reactive pipeline using RxJS to process audio frames.
- * Orchestrates: Hardware -> Pitch Detection -> Note Segmenter -> Event Sink.
- *
- * Zero-Allocation Contract:
- * Reuses SHARED_PITCH_FRAME and other pre-allocated objects.
+ * Manages the reactive flow of pitch events using RxJS.
+ * Optimized for Zero Allocation.
  */
-
-import { Subject, Observable, from } from 'rxjs'
-import { map, tap, share } from 'rxjs/operators'
-import { AudioCapturePort } from '../ports/audio.port'
-import { PitchDetector } from '../pitch-detector'
-import { SHARED_PITCH_FRAME, PitchFrame } from '../domain/data-structures'
-import { Hertz, Cents, frequencyToMidi } from '../domain/musical-domain'
-import { createActor } from 'xstate'
-import { noteSegmenterMachine, NoteSegmenterEvent } from '../practice/note-segmenter'
-
-export interface AudioPipelineConfig {
-  rmsThreshold: number
-  confidenceThreshold: number
-}
-
 export class AudioPipeline {
-  private frameSubject = new Subject<Float32Array>()
-  private detector: PitchDetector | null = null
-  private segmenterActor = createActor(noteSegmenterMachine)
+  private inputSubject = new Subject<RawPitchEvent>()
+  private segmenter = createActor(noteSegmenterMachine)
 
-  /** Pre-allocated event object to avoid allocations in 60FPS loop */
-  private readonly REUSABLE_EVENT: NoteSegmenterEvent = {
-    type: 'FRAME',
-    frame: SHARED_PITCH_FRAME as PitchFrame
-  }
+  /**
+   * The processed stream of valid pitch frames.
+   * Note: It emits the same SHARED_PITCH_FRAME instance to avoid allocations.
+   */
+  public readonly pitchFrame$: Observable<PitchFrame>
 
-  /** Observable of processed PitchFrames */
-  public readonly pitch$: Observable<PitchFrame>
+  constructor() {
+    this.segmenter.start()
 
-  /** Observable of note segmenter state changes */
-  public readonly segmenter$: Observable<any>
-
-  constructor(
-    private capturePort: AudioCapturePort,
-    private config: AudioPipelineConfig = { rmsThreshold: 0.01, confidenceThreshold: 0.8 }
-  ) {
-    this.detector = new PitchDetector(this.capturePort.sampleRate)
-    this.segmenterActor.start()
-
-    this.pitch$ = this.frameSubject.pipe(
-      map((buffer) => {
-        const result = this.detector!.detectPitchWithValidation(buffer, this.config.rmsThreshold)
-
-        // Zero-allocation update of SHARED_PITCH_FRAME
-        SHARED_PITCH_FRAME.frequency = result.pitchHz as Hertz
-        SHARED_PITCH_FRAME.confidence = result.confidence
-        SHARED_PITCH_FRAME.timestamp = this.capturePort.getCurrentTime()
-
-        // Cents calculation if pitch found
-        if (result.pitchHz > 0) {
-          const midiResult = frequencyToMidi(result.pitchHz as Hertz)
-          if (midiResult.isOk()) {
-            const fractionalMidi = midiResult.value
-            const roundedMidi = Math.round(fractionalMidi)
-            SHARED_PITCH_FRAME.centsDeviation = ((fractionalMidi - roundedMidi) * 100) as Cents
-          }
+    this.pitchFrame$ = this.inputSubject.asObservable().pipe(
+      // 1. Note Segmentation (Side Effect to the machine)
+      tap(event => {
+        if (event.pitchHz > 0 && event.confidence > 0.5) {
+          this.segmenter.send({
+            type: 'PITCH_DETECTED',
+            confidence: event.confidence,
+            rms: event.rms
+          })
         } else {
-          SHARED_PITCH_FRAME.centsDeviation = 0 as Cents
+          this.segmenter.send({ type: 'PITCH_LOST' })
         }
+      }),
 
-        return SHARED_PITCH_FRAME as PitchFrame
+      // 2. Filter based on machine state (Only emit when in NOTE or NOTE_LOST state)
+      filter(() => {
+        const state = this.segmenter.getSnapshot().value
+        return state === 'NOTE' || state === 'NOTE_LOST'
       }),
-      tap(() => {
-        // Use pre-allocated event object
-        this.segmenterActor.send(this.REUSABLE_EVENT)
+
+      // 3. Zero-allocation mapping (mutating shared object)
+      tap(event => {
+        SHARED_PITCH_FRAME.frequency = event.pitchHz as Hertz
+        SHARED_PITCH_FRAME.confidence = event.confidence
+        SHARED_PITCH_FRAME.timestamp = event.timestamp
       }),
+
       share()
-    )
-
-    this.segmenter$ = from(this.segmenterActor).pipe(share())
+    ) as unknown as Observable<PitchFrame>
   }
 
   /**
-   * Starts the pipeline by connecting to the hardware stream.
+   * Pushes a new raw detection result into the pipeline.
    */
-  async start(): Promise<void> {
-    await this.capturePort.startStream((buffer) => {
-      this.frameSubject.next(buffer)
-    })
+  push(event: RawPitchEvent): void {
+    this.inputSubject.next(event)
   }
 
   /**
-   * Stops the pipeline and hardware stream.
+   * Cleanup resources
    */
-  async stop(): Promise<void> {
-    await this.capturePort.stopStream()
-    this.segmenterActor.stop()
-  }
-
-  /**
-   * Resets the internal state (segmenter, etc).
-   */
-  reset(): void {
-    this.segmenterActor.send({ type: 'RESET' })
+  destroy(): void {
+    this.segmenter.stop()
   }
 }
+
+export const audioPipeline = new AudioPipeline()
