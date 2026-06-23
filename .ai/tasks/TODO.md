@@ -116,6 +116,7 @@
 
 * [x] **6.1. Refactorización de Estructuras de Datos (Domain)**
     * [x] Sustituir `FixedRingBuffer` por `CircularBuffer` de `mnemonist` en `lib/domain/data-structures.ts`.
+    * [x] Implementación de `FixedRingBuffer` refactorizada para delegar en la API nativa de `mnemonist`, eliminando bucles manuales.
 * [x] **6.2. Integración de Manejo Funcional de Errores e Inmutabilidad (Application)**
     * [x] Refactorizar `lib/practice-core.ts` para usar `neverthrow` (`Result`, `ok`, `err`) en lugar de excepciones imperativas.
     * [x] Implementar `immer` (`produce`) en el reducer `reducePracticeEvent` para eliminar spreads manuales.
