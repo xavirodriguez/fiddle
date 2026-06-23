@@ -11,6 +11,8 @@ import {
   TuningConfig,
   frequencyToMidi,
   midiToFrequency,
+  Hertz,
+  MidiNote,
 } from './domain/musical-domain'
 import { AppError, ERROR_CODES } from './errors/app-error'
 import { Observation } from './technique-types'
@@ -24,7 +26,11 @@ import type {
   MetronomeConfig,
 } from '@/lib/domain/practice'
 import { Result, ok, err } from 'neverthrow'
-import { produce } from 'immer'
+import { produce, castDraft } from 'immer'
+import { FixedRingBuffer } from './domain/data-structures'
+
+// Ring buffer for detection history to avoid allocations in the reducer.
+const DETECTION_HISTORY_BUFFER = new FixedRingBuffer<DetectedNote, 10>(10)
 
 export type {
   TargetNote,
@@ -111,7 +117,7 @@ export class MusicalNote {
     config: TuningConfig = DEFAULT_TUNING,
   ): MusicalNote {
     validateFrequency(frequency)
-    const midiResult = frequencyToMidi(frequency as any, config)
+    const midiResult = frequencyToMidi(frequency as Hertz, config)
     if (midiResult.isErr()) throw midiResult.error
     const exactMidi = midiResult.value
     const roundedMidi = Math.round(exactMidi)
@@ -131,7 +137,7 @@ export class MusicalNote {
 
   static fromFrequency(frequency: number, config: TuningConfig = DEFAULT_TUNING): MusicalNote {
     validateFrequency(frequency)
-    const midiResult = frequencyToMidi(frequency as any, config)
+    const midiResult = frequencyToMidi(frequency as Hertz, config)
     if (midiResult.isErr()) throw midiResult.error
     const exactMidi = midiResult.value
     const roundedMidi = Math.round(exactMidi)
@@ -144,7 +150,7 @@ export class MusicalNote {
   }
 
   static fromMidi(midiNumber: number, config: TuningConfig = DEFAULT_TUNING): MusicalNote {
-    const freqResult = midiToFrequency(midiNumber as any, config)
+    const freqResult = midiToFrequency(midiNumber as MidiNote, config)
     if (freqResult.isErr()) throw freqResult.error
     return MusicalNote.fromFrequency(freqResult.value, config)
   }
@@ -282,7 +288,18 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
       }
       case 'NOTE_DETECTED': {
         const payload = (event as Extract<PracticeEvent, { type: 'NOTE_DETECTED' }>).payload
-        draft.detectionHistory = [payload, ...draft.detectionHistory].slice(0, 10)
+
+        // Manual shift to avoid full array recreation or spread/slice
+        const history = draft.detectionHistory
+        if (history.length >= 10) {
+          for (let i = history.length - 1; i > 0; i--) {
+            history[i] = history[i - 1]
+          }
+          history[0] = castDraft(payload)
+        } else {
+          history.unshift(castDraft(payload))
+        }
+
         if (draft.status === 'correct') {
           draft.status = 'listening'
         }
@@ -379,10 +396,33 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
 
 /**
  * Evaluates whether the drill target for a loop has been met.
- * Currently a stub for future implementation of intelligent drill logic.
+ * Logic: if 3 consecutive perfect repetitions are achieved, the loop is completed.
  */
-function evaluateDrillTarget(loopRegion: LoopRegion, payload: any) {
-  // Placeholder for future logic that will determine if the loop should finish
-  // based on technique metrics, perfect streaks, or repetition counts.
-  return { drillTarget: loopRegion.drillTarget, isLoopCompleted: false }
+function evaluateDrillTarget(
+  loopRegion: LoopRegion,
+  payload: { isPerfect: boolean; observations?: Observation[] },
+) {
+  const drillTarget = loopRegion.drillTarget
+  if (!drillTarget) {
+    return { drillTarget: null, isLoopCompleted: false }
+  }
+
+  const isPerfect = payload?.isPerfect ?? false
+  let completedRepetitions = drillTarget.completedRepetitions
+
+  if (isPerfect) {
+    completedRepetitions++
+  } else {
+    completedRepetitions = 0 // Reset on failure for "consecutive" logic
+  }
+
+  const isLoopCompleted = completedRepetitions >= 3 // Hardcoded to 3 as per requirement
+
+  return {
+    drillTarget: {
+      ...drillTarget,
+      completedRepetitions,
+    },
+    isLoopCompleted,
+  }
 }
