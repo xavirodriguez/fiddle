@@ -56,16 +56,8 @@ export class FixedRingBuffer<T> {
     this.buffer = new Array(maxSize);
   }
 
-  /**
-   * Pushes a single item into the buffer.
-   * Avoids rest parameters (...) to prevent temporary array allocation.
-   */
   push(item: T): void {
-    this.buffer[this.head] = item;
-    this.head = (this.head + 1) % this.maxSize;
-    if (this.size < this.maxSize) {
-      this.size++;
-    }
+    this.buffer.push(item)
   }
 
   /**

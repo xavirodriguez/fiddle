@@ -289,16 +289,9 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
       case 'NOTE_DETECTED': {
         const payload = (event as Extract<PracticeEvent, { type: 'NOTE_DETECTED' }>).payload
 
-        // Manual shift to avoid full array recreation or spread/slice
-        const history = draft.detectionHistory
-        if (history.length >= 10) {
-          for (let i = history.length - 1; i > 0; i--) {
-            history[i] = history[i - 1]
-          }
-          history[0] = castDraft(payload)
-        } else {
-          history.unshift(castDraft(payload))
-        }
+        // Use pre-allocated RingBuffer to avoid allocations in hot-path
+        DETECTION_HISTORY_BUFFER.push(payload)
+        draft.detectionHistory = castDraft(DETECTION_HISTORY_BUFFER.toArray())
 
         if (draft.status === 'correct') {
           draft.status = 'listening'
