@@ -48,10 +48,8 @@ export class FixedRingBuffer<T, N extends number> {
     this.buffer = new CircularBuffer(Array, maxSize)
   }
 
-  push(...items: T[]): void {
-    for (const item of items) {
-      this.buffer.push(item)
-    }
+  push(item: T): void {
+    this.buffer.push(item)
   }
 
   toArray(): readonly T[] {

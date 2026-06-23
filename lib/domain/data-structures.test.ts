@@ -50,9 +50,13 @@ describe('FixedRingBuffer', () => {
     expect(buffer.toArray()[0]).toBe(2)
   })
 
-  it('should handle push with multiple elements (adding newest to front)', () => {
+  it('should handle push with multiple elements by pushing them one by one', () => {
     const buffer = new FixedRingBuffer<number, 3>(3)
-    buffer.push(1, 2, 3, 4, 5)
+    buffer.push(1)
+    buffer.push(2)
+    buffer.push(3)
+    buffer.push(4)
+    buffer.push(5)
     // 5 is newest, so it should be at index 0. Buffer size is 3.
     // Result should be [5, 4, 3]
     expect(buffer.toArray()).toEqual([5, 4, 3])

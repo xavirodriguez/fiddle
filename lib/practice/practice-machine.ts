@@ -137,7 +137,7 @@ export const practiceMachine = createMachine({
       lastTimestamp: 0,
     }),
     notifySuccess: () => {
-      console.log('Target Matched!');
+      // Inlined in PracticeService.actor definition
     },
   },
 });
