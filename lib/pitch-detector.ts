@@ -80,63 +80,50 @@ export class PitchDetector {
    * Reuses SHARED_DETECTION_RESULT to follow Zero-Allocation mandate.
    */
   detect(buffer: Float32Array): PitchDetectionResult {
-    const result = this.detector.findPitch(buffer, this.sampleRate);
-    const pitchHz = result[0];
-    const confidence = result[1];
-
-    // Use Meyda for feature extraction
     const po2Buffer = this.getPowerOfTwoBuffer(buffer);
 
-    // Meyda.extract might return null or unexpected types if input is invalid
+    // 1. Extract features with Meyda (One pass)
     const features = Meyda.extract(['rms', 'spectralFlatness', 'spectralCentroid'], po2Buffer) as Record<string, number | null>;
+    const rms = features?.rms ?? 0;
 
     const dr = SHARED_DETECTION_RESULT;
-    dr.pitchHz = pitchHz ?? 0;
-    dr.confidence = confidence ?? 0;
-    dr.rms = features?.rms ?? 0;
+    dr.rms = rms;
     dr.spectralFlatness = features?.spectralFlatness ?? 0;
     dr.spectralCentroid = features?.spectralCentroid ?? 0;
+
+    // 2. Conditional Pitch Detection (Internal Noise Gate)
+    if (rms > 0.01) {
+      const result = this.detector.findPitch(buffer, this.sampleRate);
+      dr.pitchHz = result[0] ?? 0;
+      dr.confidence = result[1] ?? 0;
+
+      // AMDF refinement to handle octave doubling (common in violins)
+      const amdfPitch = this.detectAMDF(buffer, this.sampleRate);
+      if (amdfPitch > 0 && dr.pitchHz > amdfPitch * 1.8 && dr.pitchHz < amdfPitch * 2.2) {
+        dr.pitchHz = amdfPitch;
+      }
+    } else {
+      dr.pitchHz = 0;
+      dr.confidence = 0;
+    }
 
     return dr;
   }
 
   /**
    * Detects pitch with an RMS noise gate.
-   * Returns pitchHz = 0 and confidence = 0 when signal is below `rmsThreshold`.
-   *
-   * @param buffer - PCM audio samples.
-   * @param rmsThreshold - Minimum RMS value to attempt detection (default 0.01).
+   * @deprecated Use detect() directly as it now includes an internal noise gate.
    */
   detectPitchWithValidation(
     buffer: Float32Array,
     rmsThreshold = 0.01,
   ): PitchDetectionResult {
-    // Use Meyda for RMS
-    const po2Buffer = this.getPowerOfTwoBuffer(buffer);
-    const rms = (Meyda.extract('rms', po2Buffer) as number) ?? 0;
-
-    if (rms < (rmsThreshold || 0.01)) {
-      const dr = SHARED_DETECTION_RESULT;
+    const dr = this.detect(buffer);
+    if (dr.rms < rmsThreshold) {
       dr.pitchHz = 0;
       dr.confidence = 0;
-      dr.rms = rms;
-      dr.spectralFlatness = 0;
-      dr.spectralCentroid = 0;
-      return dr;
     }
-
-    // AMDF refinement to handle octave doubling (common in violins)
-    // Run only if we pass the noise gate
-    const amdfPitch = this.detectAMDF(buffer, this.sampleRate);
-
-    const result = this.detect(buffer);
-
-    // If AMDF suggests a significantly lower pitch (octave), favor AMDF if confidence is high
-    if (amdfPitch > 0 && result.pitchHz > amdfPitch * 1.8 && result.pitchHz < amdfPitch * 2.2) {
-       result.pitchHz = amdfPitch;
-    }
-
-    return result;
+    return dr;
   }
 
   /**

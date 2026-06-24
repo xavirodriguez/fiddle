@@ -2,9 +2,10 @@ import { type Observable, Subject } from 'rxjs'
 import { filter, map, share, tap } from 'rxjs/operators'
 import { createActor } from 'xstate'
 
-import { type Cents, type PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
-import { type Hertz } from '../domain/musical-domain'
+import { type PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
+import { type Cents, type Hertz } from '../domain/musical-domain'
 import { noteSegmenterMachine } from '../practice/note-segmenter'
+import { TechniqueAgent } from '../practice/technique-agent'
 import { MusicalNote } from '../practice-core'
 
 /**
@@ -41,9 +42,9 @@ export class AudioPipeline {
     this.segmenter.start()
 
     this.pitchFrame$ = this.inputSubject.asObservable().pipe(
-      // 1. Note Segmentation (Side Effect to the machine)
+      // 1. Note Segmentation (Update machine state)
       tap(event => {
-        if (event.pitchHz > 0 && event.confidence > 0.5) {
+        if (event.pitchHz > 0 && event.confidence > 0.8 && event.rms > 0.01) {
           this.segmenter.send({
             type: 'PITCH_DETECTED',
             confidence: event.confidence,
@@ -62,16 +63,17 @@ export class AudioPipeline {
 
       // 3. Zero-allocation mapping (mutating shared object)
       map(event => {
+        // Calculate Cents Deviation using MusicalNote core utility
+        const note = MusicalNote.fromFrequencyShared(event.pitchHz);
+
         SHARED_PITCH_FRAME.frequency = event.pitchHz as Hertz
         SHARED_PITCH_FRAME.confidence = event.confidence
         SHARED_PITCH_FRAME.timestamp = event.timestamp
+        SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
 
-        if (event.pitchHz > 0) {
-          const note = MusicalNote.fromFrequencyShared(event.pitchHz)
-          SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
-        } else {
-          SHARED_PITCH_FRAME.centsDeviation = 0 as Cents
-        }
+        // 4. Technique Analysis (Side effect: updates SHARED_TECHNIQUE_METRICS)
+        const metrics = this.techniqueAgent.analyze(SHARED_PITCH_FRAME, event.rms);
+        SHARED_PITCH_FRAME.technique = metrics ?? undefined;
 
         return SHARED_PITCH_FRAME
       }),

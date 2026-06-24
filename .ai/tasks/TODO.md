@@ -129,8 +129,8 @@
     * [x] Sustituir cálculos manuales de desviación y regresión por `simple-statistics` en el `TechniqueAgent`.
     * [x] Integrar `meyda` para el análisis espectral y `pitchy` para el algoritmo de detección YIN/MPM.
 
-* [ ] **6.5. Motor de Audio y Persistencia Reactiva (Infrastructure/Adapters)**
-    * [ ] Migrar el metrónomo y scheduling a `tone.js`.
+* [x] **6.5. Motor de Audio y Persistencia Reactiva (Infrastructure/Adapters)**
+    * [x] Migrar el metrónomo y scheduling a `tone.js`.
     * [ ] Consolidar los stores de Zustand en Slices o migrar a `@tanstack/store`.
 
 ---

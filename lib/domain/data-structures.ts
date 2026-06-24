@@ -73,20 +73,12 @@ export class FixedRingBuffer<T> {
   forEach(callback: (item: T, index: number) => void): void {
     if (this.buffer.size === 0) return;
 
-    let i = 0;
-    // CircularBuffer iterates from oldest to newest.
-    // To go from newest to oldest, we can use the internal array or just collect and reverse.
-    // However, Mnemonist doesn't expose an easy way to iterate backwards efficiently without
-    // potentially allocating. For now, we'll use a manual loop if we can access by index.
-    // CircularBuffer has .get(index)
+    // Mnemonist CircularBuffer allows indexed access: buffer.get(i)
+    // where 0 is the oldest and size-1 is the newest.
     const size = this.buffer.size;
-    for (i = 0; i < size; i++) {
-        // Mnemonist CircularBuffer.get(0) is the OLDEST.
-        // So newest is size - 1.
-        const item = this.buffer.get(size - 1 - i);
-        if (item !== undefined) {
-            callback(item, i);
-        }
+    for (let i = 0; i < size; i++) {
+      // newest to oldest: index size-1, size-2, ..., 0
+      callback(this.buffer.get(size - 1 - i)!, i);
     }
   }
 
@@ -94,6 +86,7 @@ export class FixedRingBuffer<T> {
    * Returns the most recently added item without removing it.
    */
   peek(): T | undefined {
+    if (this.buffer.size === 0) return undefined;
     return this.buffer.peekLast();
   }
 
