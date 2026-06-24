@@ -1,119 +1,104 @@
+import { assign, setup } from 'xstate';
+
 /**
- * NoteSegmenter
+ * NoteSegmenterContext
  *
- * Uses XState to robustly distinguish between SILENCE and NOTE states
- * based on the incoming PitchFrame stream. This prevents "jitter" where
- * a single bad frame might interrupt a held note.
+ * Tracks consecutive frames and thresholds for state transitions.
  */
-
-import { assign,createMachine } from 'xstate'
-
-import { type PitchFrame } from '../domain/data-structures'
-
 export interface NoteSegmenterContext {
-  consecutiveFrames: number
-  readonly minFramesForNote: number
-  readonly minFramesForSilence: number
+  consecutiveFrames: number;
+  readonly minFramesForNote: number;
 }
 
+/**
+ * NoteSegmenterEvent
+ */
 export type NoteSegmenterEvent =
-  | { type: 'FRAME'; frame: PitchFrame }
-  | { type: 'RESET' }
+  | { type: 'PITCH_DETECTED'; confidence: number; rms: number }
+  | { type: 'PITCH_LOST' }
+  | { type: 'RESET' };
 
 /**
- * Note Segmenter State Machine
+ * noteSegmenterMachine
  *
- * Transitions between silence and note states with debouncing.
+ * Robustly distinguishes between silence and musical notes using XState v5.
+ * Designed for low-latency practice sessions.
  */
-export const noteSegmenterMachine = createMachine(
-  {
-    id: 'noteSegmenter',
-    initial: 'silence',
-    types: {},
-    context: {
+export const noteSegmenterMachine = setup({
+  types: {
+    context: {} as NoteSegmenterContext,
+    events: {} as NoteSegmenterEvent,
+  },
+  actions: {
+    resetCounter: assign({
       consecutiveFrames: 0,
-      minFramesForNote: 2, // At ~60FPS, 2 frames is ~33ms
-      minFramesForSilence: 3, // Be more conservative about ending a note
+    }),
+    incrementCounter: assign({
+      consecutiveFrames: ({ context }) => context.consecutiveFrames + 1,
+    }),
+  },
+  guards: {
+    isStrongSignal: ({ event }) =>
+      event.type === 'PITCH_DETECTED' && event.confidence > 0.8 && event.rms > 0.01,
+    isConfirmedNote: ({ context }) => context.consecutiveFrames >= 2,
+  },
+}).createMachine({
+  id: 'noteSegmenter',
+  initial: 'SILENCE',
+  context: {
+    consecutiveFrames: 0,
+    minFramesForNote: 2,
+  },
+  on: {
+    RESET: {
+      target: '.SILENCE',
+      actions: 'resetCounter',
     },
-    on: {
-      RESET: {
-        target: '.silence',
-        actions: assign({ consecutiveFrames: 0 }),
+  },
+  states: {
+    SILENCE: {
+      entry: 'resetCounter',
+      on: {
+        PITCH_DETECTED: {
+          target: 'NOTE_PENDING',
+          guard: 'isStrongSignal',
+          actions: 'incrementCounter',
+        },
       },
     },
-    states: {
-      silence: {
-        entry: assign({ consecutiveFrames: 0 }),
-        on: {
-          FRAME: {
-            guard: 'isPitchValid',
-            target: 'debouncingToNote',
+    NOTE_PENDING: {
+      on: {
+        PITCH_DETECTED: [
+          {
+            target: 'NOTE',
+            guard: 'isConfirmedNote',
           },
-        },
-      },
-      debouncingToNote: {
-        entry: assign({ consecutiveFrames: 1 }),
-        on: {
-          FRAME: [
-            {
-              guard: ({ context, event }) =>
-                context.consecutiveFrames + 1 >= context.minFramesForNote &&
-                event.type === 'FRAME' &&
-                event.frame.frequency > 0 &&
-                event.frame.confidence > 0.8,
-              target: 'note',
-            },
-            {
-              guard: 'isPitchValid',
-              actions: assign({
-                consecutiveFrames: ({ context }) => context.consecutiveFrames + 1,
-              }),
-            },
-            {
-              target: 'silence',
-            },
-          ],
-        },
-      },
-      note: {
-        on: {
-          FRAME: {
-            guard: 'isPitchInvalid',
-            target: 'debouncingToSilence',
+          {
+            actions: 'incrementCounter',
+            guard: 'isStrongSignal',
           },
-        },
+          {
+            target: 'SILENCE',
+          }
+        ],
+        PITCH_LOST: 'SILENCE',
       },
-      debouncingToSilence: {
-        entry: assign({ consecutiveFrames: 1 }),
-        on: {
-          FRAME: [
-            {
-              guard: ({ context, event }) =>
-                context.consecutiveFrames + 1 >= context.minFramesForSilence &&
-                event.type === 'FRAME' &&
-                (event.frame.frequency === 0 || event.frame.confidence < 0.5),
-              target: 'silence',
-            },
-            {
-              guard: 'isPitchInvalid',
-              actions: assign({
-                consecutiveFrames: ({ context }) => context.consecutiveFrames + 1,
-              }),
-            },
-            {
-              target: 'note',
-            },
-          ],
+    },
+    NOTE: {
+      on: {
+        PITCH_LOST: 'NOTE_LOST',
+      },
+    },
+    NOTE_LOST: {
+      after: {
+        150: 'SILENCE',
+      },
+      on: {
+        PITCH_DETECTED: {
+          target: 'NOTE',
+          guard: 'isStrongSignal',
         },
       },
     },
   },
-  {
-    guards: {
-      isPitchValid: ({ event }) =>
-        event.type === 'FRAME' && event.frame.frequency > 0 && event.frame.confidence > 0.8,
-      isPitchInvalid: ({ event }) =>
-        event.type === 'FRAME' && (event.frame.frequency === 0 || event.frame.confidence < 0.5),
-    },
-  }
-)
+});

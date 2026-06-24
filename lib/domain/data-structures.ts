@@ -54,20 +54,14 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
  * 3. Cache-Friendly: Uses native Mnemonist iteration.
  */
 export class FixedRingBuffer<T> {
-  private readonly buffer: Array<T | undefined>;
-  private head: number = 0;
-  private size: number = 0;
+  private readonly buffer: CircularBuffer<T>;
 
   constructor(public readonly maxSize: number) {
     this.buffer = new CircularBuffer(Array, maxSize);
   }
 
   push(item: T): void {
-    this.buffer[this.head] = item;
-    this.head = (this.head + 1) % this.maxSize;
-    if (this.size < this.maxSize) {
-      this.size++;
-    }
+    this.buffer.push(item);
   }
 
   /**
@@ -77,15 +71,22 @@ export class FixedRingBuffer<T> {
    * Our domain requires newest to oldest.
    */
   forEach(callback: (item: T, index: number) => void): void {
-    if (this.size === 0) return;
+    if (this.buffer.size === 0) return;
 
-    for (let i = 0; i < this.size; i++) {
-      // Calculate index from newest to oldest
-      const index = (this.head - 1 - i + this.maxSize) % this.maxSize;
-      const item = this.buffer[index];
-      if (item !== undefined) {
-        callback(item, i);
-      }
+    let i = 0;
+    // CircularBuffer iterates from oldest to newest.
+    // To go from newest to oldest, we can use the internal array or just collect and reverse.
+    // However, Mnemonist doesn't expose an easy way to iterate backwards efficiently without
+    // potentially allocating. For now, we'll use a manual loop if we can access by index.
+    // CircularBuffer has .get(index)
+    const size = this.buffer.size;
+    for (i = 0; i < size; i++) {
+        // Mnemonist CircularBuffer.get(0) is the OLDEST.
+        // So newest is size - 1.
+        const item = this.buffer.get(size - 1 - i);
+        if (item !== undefined) {
+            callback(item, i);
+        }
     }
   }
 
