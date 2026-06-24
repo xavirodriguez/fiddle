@@ -119,14 +119,6 @@ export function midiToFrequency(
 }
 
 /**
- * Utility for linear interpolation between two values.
- * Used for smoothing and UI animations.
- */
-export function lerp(start: number, end: number, t: number): number {
-  return start + (end - start) * t;
-}
-
-/**
  * Normalizes various accidental representations to the canonical numeric format.
  */
 export type CanonicalAccidental = -1 | 0 | 1;
