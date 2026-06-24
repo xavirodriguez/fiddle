@@ -31,7 +31,6 @@ export interface RawPitchEvent {
 export class AudioPipeline {
   private inputSubject = new Subject<RawPitchEvent>()
   private segmenter = createActor(noteSegmenterMachine)
-  private techniqueAgent = new TechniqueAgent()
 
   /**
    * The processed stream of valid pitch frames.
