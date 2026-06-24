@@ -12,6 +12,8 @@ const SMOOTHING_TIME_CONSTANT = 0
 class AudioManager {
   private context: AudioContext | null = null
   private analyser: AnalyserNode | null = null
+  private filter: BiquadFilterNode | null = null
+  private compressor: DynamicsCompressorNode | null = null
   private sourceNode: MediaStreamAudioSourceNode | null = null
   private stream: MediaStream | null = null
 
@@ -27,10 +29,23 @@ class AudioManager {
     this.analyser.fftSize = FFT_SIZE
     this.analyser.smoothingTimeConstant = SMOOTHING_TIME_CONSTANT
 
+    // TAREA 1: Completar el Web Audio Graph (Filtros y Compresión)
+    this.compressor = this.context.createDynamicsCompressor()
+    this.compressor.threshold.value = -24
+    this.compressor.ratio.value = 3
+
+    this.filter = this.context.createBiquadFilter()
+    this.filter.type = 'lowpass'
+    this.filter.frequency.value = 3500
+
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       this.sourceNode = this.context.createMediaStreamSource(this.stream)
-      this.sourceNode.connect(this.analyser)
+
+      // MediaStreamSource -> DynamicsCompressor -> BiquadFilter -> AnalyserNode
+      this.sourceNode.connect(this.compressor)
+      this.compressor.connect(this.filter)
+      this.filter.connect(this.analyser)
     } catch (err) {
       console.error('[AudioManager] Failed to acquire microphone:', err)
       throw err
@@ -75,9 +90,13 @@ class AudioManager {
   async dispose(): Promise<void> {
     this.stream?.getTracks().forEach((t) => t.stop())
     this.sourceNode?.disconnect()
+    this.compressor?.disconnect()
+    this.filter?.disconnect()
     await this.context?.close()
     this.stream = null
     this.sourceNode = null
+    this.compressor = null
+    this.filter = null
     this.analyser = null
     this.context = null
   }
