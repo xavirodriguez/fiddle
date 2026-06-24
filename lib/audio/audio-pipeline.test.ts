@@ -4,48 +4,35 @@ import { AudioCapturePort } from '../ports/audio.port'
 import { firstValueFrom, take, toArray } from 'rxjs'
 
 describe('AudioPipeline', () => {
-  let mockCapturePort: any
+  it('should process frames and emit pitch events when note is detected', async () => {
+    const pipeline = new AudioPipeline()
 
-  beforeEach(() => {
-    mockCapturePort = {
-      sampleRate: 44100,
-      initialize: vi.fn().mockResolvedValue(undefined),
-      startStream: vi.fn(),
-      stopStream: vi.fn().mockResolvedValue(undefined),
-      on: vi.fn(),
-      getCurrentTime: vi.fn().mockReturnValue(1.0),
+    const pitchPromise = firstValueFrom(pipeline.pitchFrame$)
+
+    // We need to send enough events to trigger the NOTE state in the segmenter
+    // noteSegmenterMachine usually needs multiple frames of confidence
+    for (let i = 0; i < 10; i++) {
+      pipeline.push({
+        pitchHz: 440,
+        confidence: 0.9,
+        rms: 0.1,
+        spectralFlatness: 0.1,
+        spectralCentroid: 1000,
+        timestamp: Date.now() / 1000,
+      })
     }
-  })
-
-  it('should process frames and emit pitch events', async () => {
-    const pipeline = new AudioPipeline(mockCapturePort)
-
-    // Simulate audio data
-    const buffer = new Float32Array(2048).fill(0.1)
-
-    // We need to trigger the callback passed to startStream
-    let frameCallback: (buf: Float32Array) => void = () => {}
-    mockCapturePort.startStream.mockImplementation((cb: any) => {
-      frameCallback = cb
-      return Promise.resolve()
-    })
-
-    await pipeline.start()
-
-    const pitchPromise = firstValueFrom(pipeline.pitch$)
-    frameCallback(buffer)
 
     const frame = await pitchPromise
     expect(frame).toBeDefined()
-    expect(frame.timestamp).toBe(1.0)
+    // It emits the SHARED_PITCH_FRAME which has a 'frequency' property (branded Hertz)
+    expect((frame as any).frequency).toBe(440)
   })
 
-  it('should reset segmenter actor on reset()', () => {
-    const pipeline = new AudioPipeline(mockCapturePort)
-    // Accessing private for test verification
-    const sendSpy = vi.spyOn((pipeline as any).segmenterActor, 'send')
+  it('should stop segmenter on destroy()', () => {
+    const pipeline = new AudioPipeline()
+    const stopSpy = vi.spyOn((pipeline as any).segmenter, 'stop')
 
-    pipeline.reset()
-    expect(sendSpy).toHaveBeenCalledWith({ type: 'RESET' })
+    pipeline.destroy()
+    expect(stopSpy).toHaveBeenCalled()
   })
 })

@@ -57,7 +57,11 @@ export class FixedRingBuffer<T> {
   }
 
   push(item: T): void {
-    this.buffer.push(item)
+    this.buffer[this.head] = item;
+    this.head = (this.head + 1) % this.maxSize;
+    if (this.size < this.maxSize) {
+      this.size++;
+    }
   }
 
   /**

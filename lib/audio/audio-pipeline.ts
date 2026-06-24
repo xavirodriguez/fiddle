@@ -1,5 +1,5 @@
 import { Subject, Observable, pipe } from 'rxjs'
-import { filter, tap, share } from 'rxjs/operators'
+import { filter, tap, share, map } from 'rxjs/operators'
 import { PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
 import { PitchDetectionResult } from '../pitch-detector'
 import { Hertz, Cents } from '../domain/musical-domain'
@@ -60,14 +60,17 @@ export class AudioPipeline {
       }),
 
       // 3. Zero-allocation mapping (mutating shared object)
-      tap(event => {
+      tap((event) => {
         SHARED_PITCH_FRAME.frequency = event.pitchHz as Hertz
         SHARED_PITCH_FRAME.confidence = event.confidence
         SHARED_PITCH_FRAME.timestamp = event.timestamp
       }),
 
-      share()
-    ) as unknown as Observable<PitchFrame>
+      // Emitting the shared frame
+      map(() => SHARED_PITCH_FRAME as PitchFrame),
+
+      share(),
+    )
   }
 
   /**
