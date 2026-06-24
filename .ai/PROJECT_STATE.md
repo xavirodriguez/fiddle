@@ -1,19 +1,20 @@
 # PROJECT STATE - Violin Mentor
 
 ## Estado Actual
-El sistema cuenta con una base sólida de dominio musical con tipado estricto y una infraestructura de audio inicial. Se ha implementado un motor de sincronización musical y persistencia básica.
+El sistema ha completado la Fase 6 de modernización en un 80%. Se han integrado exitosamente las librerías `mnemonist`, `simple-statistics`, `pitchy` y `meyda` en el núcleo de procesamiento y análisis.
 
 ### Componentes Activos
-- **Dominio Musical:** Tipos branded para Hertz, Cents, MidiNote. Conversores precisos.
-- **Infraestructura de Audio:** `WebAudioAdapter` con `AudioWorklet` para captura. `PitchDetector` envolviendo `pitchy`.
-- **Sincronización:** `TimelineSynchronizer` para seguimiento de partituras.
-- **Persistencia:** Core asíncrono con Zod schemas.
+- **Dominio Musical:** Tipos branded, conversiones precisas y `FixedRingBuffer` optimizado con `mnemonist`.
+- **Análisis de Técnica:** `TechniqueAgent` funcional con análisis estadístico (desviación, varianza, tendencia lineal) y zero-allocation.
+- **Pipeline de Audio:** Integración de RxJS (`AudioPipeline`) con XState (`NoteSegmenter`) y el `TechniqueAgent`.
+- **Detección de Pitch:** Motor basado en `pitchy` y `meyda` con soporte para Zero-Allocation mediante objetos compartidos.
+- **Sincronización:** `TimelineSynchronizer` para seguimiento de partituras vinculado al reloj maestro.
 
 ### Por Hacer (Próximos Pasos)
-- Implementar `AudioPipeline` con RxJS para desacoplar la captura del procesamiento.
-- Implementar `NoteSegmenter` con XState para una transición robusta entre silencio y nota.
-- Integrar `simple-statistics`, `meyda` y `tone.js`.
+- **6.5 Motor de Audio:** Migrar metrónomo y scheduling a `tone.js`.
+- **6.5 Persistencia:** Consolidar stores de Zustand.
+- **7.x Agentes de IA:** Expandir `TechniqueAgent` para feedback inteligente y análisis de vibrato avanzado.
 
 ### Riesgos Identificados
-- El hot-path de 60FPS debe mantenerse libre de alocaciones.
-- La latencia de audio en dispositivos móviles.
+- El uso de objetos compartidos (`SHARED_PITCH_FRAME`, `SHARED_DETECTION_RESULT`) requiere extrema precaución en RxJS para evitar inconsistencias en suscriptores asíncronos (se optó por clonación en el pipeline para seguridad).
+- Mantener la latencia baja mientras se incrementa la complejidad del análisis estadístico.

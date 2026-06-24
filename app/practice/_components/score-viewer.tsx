@@ -5,22 +5,32 @@
  *
  * A high-performance MusicXML renderer based on OpenSheetMusicDisplay (OSMD).
  *
- * Design Decisions:
- * 1. Imperative API: Exposes methods via useImperativeHandle to avoid
- *    React re-renders on every cursor movement (60 FPS).
- * 2. Performance: Minimizes DOM reflows by managing cursor state internally.
- * 3. Client-Only: Designed for Next.js App Router, requiring dynamic loading.
- * 4. Zero-allocation: Reuses the OSMD instance to avoid GC pressure.
+ * Design Decisions & Performance Optimization:
+ *
+ * 1. Why React does NOT control the cursor:
+ *    - Reconciliation Cost: React's virtual DOM diffing is too slow for 60FPS
+ *      musical synchronization. A `setState` on every note tick would trigger
+ *      unnecessary component tree evaluations.
+ *    - Reflow Cost: OSMD cursor movements involve direct SVG/Canvas manipulations.
+ *      Letting React manage this via props would cause constant re-renders and
+ *      potential layout thrashing.
+ *
+ * 2. Imperative API (useImperativeHandle):
+ *    - Provides a direct bridge for the Musical Scheduler to trigger visual
+ *      updates without entering the React render cycle.
+ *    - ensures that visual feedback is sample-accurate and jitter-free.
+ *
+ * 3. Client-Only (Dynamic Loading):
+ *    - OSMD relies on browser APIs (DOM, Canvas, WebGL). We use dynamic
+ *      imports inside useEffect to remain compatible with Next.js SSR.
+ *
+ * 4. Zero-allocation Strategy:
+ *    - The OSMD instance and current pointers are kept in `useRef` to avoid
+ *      Garbage Collection (GC) pressure during active practice sessions.
  */
 
-import React, {
-  useEffect,
-  useRef,
-  useImperativeHandle,
-  forwardRef,
-  useCallback,
-} from 'react'
-import { OpenSheetMusicDisplay, IOSMDOptions } from 'opensheetmusicdisplay'
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
+import type { OpenSheetMusicDisplay, IOSMDOptions } from 'opensheetmusicdisplay'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -80,7 +90,18 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
      */
     useImperativeHandle(ref, () => ({
       async loadScore(musicXml: string) {
-        if (!osmdRef.current || !containerRef.current) return
+        // Handle case where OSMD might still be loading asynchronously
+        if (!osmdRef.current) {
+          let attempts = 0
+          while (!osmdRef.current && attempts < 50) {
+            await new Promise((resolve) => setTimeout(resolve, 100))
+            attempts++
+          }
+        }
+
+        if (!osmdRef.current || !containerRef.current) {
+          throw new Error('OSMD failed to initialize in time')
+        }
 
         try {
           await osmdRef.current.load(musicXml)
@@ -144,15 +165,28 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
 
     /**
      * Initialize OSMD instance on mount.
+     * Dynamic import ensures the library is only loaded on the client,
+     * as OSMD depends on browser-only Canvas/SVG APIs.
      */
     useEffect(() => {
-      if (!containerRef.current) return
+      let isMounted = true
 
-      const osmd = new OpenSheetMusicDisplay(containerRef.current, OSMD_OPTIONS)
-      osmdRef.current = osmd
+      async function initOsmd() {
+        if (!containerRef.current) return
+
+        const { OpenSheetMusicDisplay } = await import('opensheetmusicdisplay')
+
+        if (isMounted && containerRef.current) {
+          const osmd = new OpenSheetMusicDisplay(containerRef.current, OSMD_OPTIONS)
+          osmdRef.current = osmd
+        }
+      }
+
+      initOsmd()
 
       return () => {
-        osmd.clear()
+        isMounted = false
+        osmdRef.current?.clear()
         osmdRef.current = null
       }
     }, [])

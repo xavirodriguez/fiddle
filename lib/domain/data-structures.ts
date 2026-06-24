@@ -1,4 +1,6 @@
 import { Hertz, Cents } from './musical-domain';
+import { CircularBuffer } from 'mnemonist';
+import { TechniqueMetrics } from '../practice/technique-agent';
 
 /**
  * Violin-specific domain constants.
@@ -15,6 +17,7 @@ export interface PitchFrame {
   readonly centsDeviation: Cents;
   readonly confidence: number;
   readonly timestamp: number; // Linked to AudioContext.currentTime
+  readonly technique?: TechniqueMetrics;
 }
 
 /**
@@ -26,6 +29,7 @@ export interface MutablePitchFrame {
   centsDeviation: Cents;
   confidence: number;
   timestamp: number;
+  technique?: TechniqueMetrics;
 }
 
 /**
@@ -37,15 +41,16 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
   centsDeviation: 0 as Cents,
   confidence: 0,
   timestamp: 0,
+  technique: undefined,
 };
 
 /**
  * Performance-optimized Ring Buffer for real-time analysis windows.
  *
  * DESIGN DECISIONS:
- * 1. Zero-Allocation: Uses a pre-allocated array and manual index tracking.
- * 2. Pure Domain: No external dependencies (Mnemonist removed).
- * 3. Cache-Friendly: Iteration via forEach avoids array copies.
+ * 1. Zero-Allocation: Delegates to Mnemonist's CircularBuffer.
+ * 2. Pure Domain: Mnemonist is an allowed utility in the domain layer.
+ * 3. Cache-Friendly: Uses native Mnemonist iteration.
  */
 export class FixedRingBuffer<T> {
   private readonly buffer: (T | undefined)[];
@@ -53,7 +58,7 @@ export class FixedRingBuffer<T> {
   private size: number = 0;
 
   constructor(public readonly maxSize: number) {
-    this.buffer = new Array(maxSize);
+    this.buffer = new CircularBuffer(Array, maxSize);
   }
 
   push(item: T): void {
@@ -66,7 +71,9 @@ export class FixedRingBuffer<T> {
 
   /**
    * High-performance iteration from newest to oldest.
-   * Avoids .toArray() and .reverse() to prevent allocations in the hot path.
+   *
+   * Note: Mnemonist's CircularBuffer.forEach iterates from oldest to newest.
+   * Our domain requires newest to oldest.
    */
   forEach(callback: (item: T, index: number) => void): void {
     if (this.size === 0) return;
@@ -85,21 +92,18 @@ export class FixedRingBuffer<T> {
    * Returns the most recently added item without removing it.
    */
   peek(): T | undefined {
-    if (this.size === 0) return undefined;
-    const lastIndex = (this.head - 1 + this.maxSize) % this.maxSize;
-    return this.buffer[lastIndex];
+    return this.buffer.peekLast();
   }
 
   /**
    * Clears the buffer logically (O(1)).
    */
   clear(): void {
-    this.head = 0;
-    this.size = 0;
+    this.buffer.clear();
   }
 
   get length(): number {
-    return this.size;
+    return this.buffer.size;
   }
 
   /**
@@ -107,7 +111,7 @@ export class FixedRingBuffer<T> {
    * Allocates a new array.
    */
   toArray(): readonly T[] {
-    const result: T[] = new Array(this.size);
+    const result: T[] = new Array(this.buffer.size);
     this.forEach((item, i) => {
       result[i] = item;
     });

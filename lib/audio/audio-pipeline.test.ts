@@ -1,20 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { AudioPipeline } from './audio-pipeline'
-import { AudioCapturePort } from '../ports/audio.port'
-import { firstValueFrom, take, toArray } from 'rxjs'
+import { AudioPipeline, RawPitchEvent } from './audio-pipeline'
 
 describe('AudioPipeline', () => {
-  let mockCapturePort: any
+  let pipeline: AudioPipeline;
 
   beforeEach(() => {
-    mockCapturePort = {
-      sampleRate: 44100,
-      initialize: vi.fn().mockResolvedValue(undefined),
-      startStream: vi.fn(),
-      stopStream: vi.fn().mockResolvedValue(undefined),
-      on: vi.fn(),
-      getCurrentTime: vi.fn().mockReturnValue(1.0),
-    }
+    pipeline = new AudioPipeline()
   })
 
   it('should process frames and emit pitch events', async () => {

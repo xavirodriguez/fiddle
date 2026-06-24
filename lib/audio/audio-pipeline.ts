@@ -3,8 +3,10 @@ import { filter, tap, share, map } from 'rxjs/operators'
 import { PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
 import { PitchDetectionResult } from '../pitch-detector'
 import { Hertz, Cents } from '../domain/musical-domain'
+import { MusicalNote } from '../practice-core'
 import { createActor } from 'xstate'
 import { noteSegmenterMachine } from '../practice/note-segmenter-machine'
+import { TechniqueAgent } from '../practice/technique-agent'
 
 /**
  * RawPitchEvent
@@ -29,6 +31,7 @@ export interface RawPitchEvent {
 export class AudioPipeline {
   private inputSubject = new Subject<RawPitchEvent>()
   private segmenter = createActor(noteSegmenterMachine)
+  private techniqueAgent = new TechniqueAgent()
 
   /**
    * The processed stream of valid pitch frames.

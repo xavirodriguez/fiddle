@@ -50,8 +50,10 @@ export interface PitchDetectorWorkerPort {
   /**
    * Sends a buffer to the worker for analysis.
    * Uses Transferable Objects for zero-copy performance.
+   * @param buffer - The audio buffer to process.
+   * @param timestamp - The AudioContext timestamp when this buffer was captured.
    */
-  postBuffer(buffer: Float32Array): void
+  postBuffer(buffer: Float32Array, timestamp: number): void
 
   /**
    * Registers a callback for when the worker completes an analysis.

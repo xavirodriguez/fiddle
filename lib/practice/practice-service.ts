@@ -60,14 +60,26 @@ export class PracticeService {
   })
 
   async initialize(exercise: Exercise, onNoteTriggered: (event: MusicalEvent) => void) {
-    await ToneBridge.initialize()
+    // Ensure the native AudioContext is initialized first
+    await audioManager.initialize()
+
+    // Synchronize Tone.js with the same AudioContext
+    const bridgeResult = await ToneBridge.initialize()
+    if (bridgeResult.isErr()) {
+      console.error('[PracticeService] ToneBridge failed:', bridgeResult.error)
+    }
+
+    // Initialize the adapter (which uses audioManager internally or shares context)
     await this.audioAdapter.initialize()
+
     this.synchronizer.compile(exercise)
     this.onNoteTriggered = onNoteTriggered
-    this.detector = new PitchDetector(this.audioAdapter.sampleRate)
+
+    const sampleRate = audioManager.getContext()?.sampleRate || 44100
+    this.detector = new PitchDetector(sampleRate)
 
     // Setup RxJS Pipeline Subscription
-    this.pipelineSubscription = audioPipeline.pitchFrame$.subscribe(frame => {
+    this.pipelineSubscription = audioPipeline.pitchFrame$.subscribe((frame) => {
       this.processFrame(frame)
     })
   }
@@ -103,13 +115,18 @@ export class PracticeService {
     const tuner = useTunerStore.getState()
     const shouldUpdateStore = now - this.lastUpdateTime > this.UPDATE_INTERVAL_SEC
 
+    // 1. Update Tuner Store (Reactive UI)
     tuner.updatePitch(frame.frequency, frame.confidence)
 
-    // Real-time sync verification
-    const verification = this.synchronizer.verify(now, frequencyToMidi(frame.frequency as Hertz).unwrapOr(0 as any))
+    // 2. Real-time sync verification (O(1) Zero-Allocation)
+    const midiResult = frequencyToMidi(frame.frequency as Hertz)
+    const detectedMidi = midiResult.isOk() ? midiResult.value : 0
+    const verification = this.synchronizer.verify(now, detectedMidi)
 
+    // 3. Update Sync State (Only on discrete changes to maintain 60 FPS)
     const sync = store.syncState
-      const nextMeasure = this.synchronizer.getTimeline()[verification.currentNoteIndex]?.measureIndex || 0
+    const timeline = this.synchronizer.getTimeline()
+    const nextMeasure = timeline[verification.currentNoteIndex]?.measureIndex ?? 0
 
     if (
       sync.currentMeasure !== nextMeasure ||
@@ -123,6 +140,7 @@ export class PracticeService {
       })
     }
 
+    // 4. Update Practice Core & Observations
     this.handlePitchDetected(frame, now, shouldUpdateStore)
   }
 
