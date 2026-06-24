@@ -121,9 +121,9 @@
     * [x] Refactorizar `lib/practice-core.ts` para usar `neverthrow` (`Result`, `ok`, `err`) en lugar de excepciones imperativas.
     * [x] Implementar `immer` (`produce`) en el reducer `reducePracticeEvent` para eliminar spreads manuales.
 
-* [ ] **6.3. Pipeline Reactivo y Máquinas de Estado (Application/Infrastructure)**
-    * [ ] Diseñar el `AudioPipeline` usando `rxjs` en `lib/ports/audio.port.ts`.
-    * [ ] Implementar `xstate` para el `NoteSegmenter` (SILENCE ↔ NOTE) y el ciclo de vida de la sesión.
+* [x] **6.3. Pipeline Reactivo y Máquinas de Estado (Application/Infrastructure)**
+    * [x] Diseñar el `AudioPipeline` usando `rxjs` en `lib/audio/audio-pipeline.ts`.
+    * [x] Implementar `xstate` para el `NoteSegmenter` (SILENCE ↔ NOTE) y el ciclo de vida de la sesión.
 
 * [ ] **6.4. Análisis Estadístico y Extracción de Features (Domain/Infrastructure)**
     * [ ] Sustituir cálculos manuales de desviación y regresión por `simple-statistics` en el `TechniqueAgent`.

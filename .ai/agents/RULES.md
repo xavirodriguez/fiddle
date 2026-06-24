@@ -13,3 +13,8 @@
 ## 3. Reglas Técnicas de Audio (Violín y Voz)
 - **Frecuencia de Muestreo Adaptativa:** No asumas nunca que el micrófono corre a 44100Hz o 48000Hz. El código debe consultar dinámicamente `audioContext.sampleRate`.
 - **Puerta de Ruido Obligatoria:** Antes de calcular el pitch, se debe evaluar la energía RMS de la señal. Si está por debajo de un umbral configurable (Noise Gate), el resultado debe ser inmediatamente cortado como silencioso (`pitch: -1`) para evitar lecturas caóticas del ruido ambiental.
+
+## 4. Reglas de Integración y Calidad
+- **Aislamiento de API de Audio:** Ninguna capa de persistencia o servicio de gameplay puede importar código directamente de Web Audio API; todo control de hardware pasa a través de `lib/ports/audio.port.ts`.
+- **Rendimiento de Tests:** El comando `npm run test` debe ejecutar el suite de pruebas en menos de 2 segundos de forma totalmente determinista.
+- **Calidad de Tipado:** El analizador estático de TypeScript debe pasar con cero errores bajo configuraciones de `"strict": true`.

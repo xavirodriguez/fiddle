@@ -15,5 +15,11 @@
 - **Persistence Schemas:** Defined Zod schemas for `PracticeSessionRecord` and `Calibration` (Task 5.1).
 - **Asynchronous Persistence:** Implemented non-blocking `saveAsync` and `loadAsync` in `lib/persistence/persistence-core.ts` (Task 5.2).
 
+### Added
+- **NoteSegmenter:** Added XState machine for robust note onset/offset detection with debouncing (Task 6.3).
+- **AudioPipeline:** Implemented RxJS-based reactive audio processing pipeline (Task 6.3).
+- **Unit Tests:** Added tests for `NoteSegmenter` and `AudioPipeline`.
+
 ### Changed
-- Updated `.ai/tasks/TODO.md` marking completed tasks.
+- **PracticeService:** Refactored to use `AudioPipeline` instead of manual RAF loop.
+- **Project Metadata:** Cleaned up `.ai/tasks/DONE.md` and consolidated project rules in `.ai/agents/RULES.md`.
