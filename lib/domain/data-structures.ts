@@ -1,6 +1,3 @@
-import { CircularBuffer } from 'mnemonist';
-
-import { type TechniqueMetrics } from '../practice/technique-agent';
 import { type Cents,type Hertz } from './musical-domain';
 
 /**
@@ -18,7 +15,6 @@ export interface PitchFrame {
   readonly centsDeviation: Cents;
   readonly confidence: number;
   readonly timestamp: number; // Linked to AudioContext.currentTime
-  readonly technique?: TechniqueMetrics;
 }
 
 /**
@@ -30,7 +26,6 @@ export interface MutablePitchFrame {
   centsDeviation: Cents;
   confidence: number;
   timestamp: number;
-  technique?: TechniqueMetrics;
 }
 
 /**
@@ -42,51 +37,49 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
   centsDeviation: 0 as Cents,
   confidence: 0,
   timestamp: 0,
-  technique: undefined,
 };
 
 /**
  * Performance-optimized Ring Buffer for real-time analysis windows.
  *
  * DESIGN DECISIONS:
- * 1. Zero-Allocation: Delegates to Mnemonist's CircularBuffer.
- * 2. Pure Domain: Mnemonist is an allowed utility in the domain layer.
- * 3. Cache-Friendly: Uses native Mnemonist iteration.
+ * 1. Zero-Allocation: Uses a pre-allocated fixed-size array.
+ * 2. Pure Domain: No external dependencies.
+ * 3. Cache-Friendly: Uses a simple circular index.
  */
 export class FixedRingBuffer<T> {
-  private readonly buffer: CircularBuffer<T>;
+  private readonly buffer: T[];
+  private head = 0;
+  private size = 0;
 
   constructor(public readonly maxSize: number) {
-    this.buffer = new CircularBuffer(Array, maxSize);
+    this.buffer = new Array(maxSize);
   }
 
+  /**
+   * Pushes an item into the buffer. If the buffer is full, it overwrites the oldest item.
+   */
   push(item: T): void {
-    this.buffer.push(item);
+    this.buffer[this.head] = item;
+    this.head = (this.head + 1) % this.maxSize;
+    if (this.size < this.maxSize) {
+      this.size++;
+    }
   }
 
   /**
    * High-performance iteration from newest to oldest.
-   *
-   * Note: Mnemonist's CircularBuffer.forEach iterates from oldest to newest.
-   * Our domain requires newest to oldest.
    */
   forEach(callback: (item: T, index: number) => void): void {
-    if (this.buffer.size === 0) return;
+    if (this.size === 0) return;
 
-    let i = 0;
-    // CircularBuffer iterates from oldest to newest.
-    // To go from newest to oldest, we can use the internal array or just collect and reverse.
-    // However, Mnemonist doesn't expose an easy way to iterate backwards efficiently without
-    // potentially allocating. For now, we'll use a manual loop if we can access by index.
-    // CircularBuffer has .get(index)
-    const size = this.buffer.size;
-    for (i = 0; i < size; i++) {
-        // Mnemonist CircularBuffer.get(0) is the OLDEST.
-        // So newest is size - 1.
-        const item = this.buffer.get(size - 1 - i);
-        if (item !== undefined) {
-            callback(item, i);
-        }
+    for (let i = 0; i < this.size; i++) {
+      // (this.head - 1 - i) can be negative, so we add maxSize to keep it positive.
+      const index = (this.head - 1 - i + this.maxSize) % this.maxSize;
+      const item = this.buffer[index];
+      if (item !== undefined) {
+        callback(item, i);
+      }
     }
   }
 
@@ -94,18 +87,21 @@ export class FixedRingBuffer<T> {
    * Returns the most recently added item without removing it.
    */
   peek(): T | undefined {
-    return this.buffer.peekLast();
+    if (this.size === 0) return undefined;
+    const index = (this.head - 1 + this.maxSize) % this.maxSize;
+    return this.buffer[index];
   }
 
   /**
    * Clears the buffer logically (O(1)).
    */
   clear(): void {
-    this.buffer.clear();
+    this.head = 0;
+    this.size = 0;
   }
 
   get length(): number {
-    return this.buffer.size;
+    return this.size;
   }
 
   /**
@@ -113,7 +109,7 @@ export class FixedRingBuffer<T> {
    * Allocates a new array.
    */
   toArray(): readonly T[] {
-    const result: T[] = new Array(this.buffer.size);
+    const result: T[] = new Array(this.size);
     this.forEach((item, i) => {
       result[i] = item;
     });
