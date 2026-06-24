@@ -5,40 +5,42 @@
  * Refactored for branded types, strict validation, neverthrow and immer.
  */
 
-import {
-  normalizeAccidental,
-  DEFAULT_TUNING,
-  TuningConfig,
-  frequencyToMidi,
-  midiToFrequency,
-  Hertz,
-  MidiNote,
-} from './domain/musical-domain'
-import { AppError, ERROR_CODES } from './errors/app-error'
-import { Observation } from './technique-types'
+import { castDraft,produce } from 'immer'
+import { err,ok, type Result } from 'neverthrow'
+
 import type { Note as TargetNote } from '@/lib/domain/exercise'
 import type {
   DetectedNote,
-  PracticeStatus,
-  PracticeState,
-  PracticeEvent,
   LoopRegion,
   MetronomeConfig,
+  PracticeEvent,
+  PracticeState,
+  PracticeStatus,
 } from '@/lib/domain/practice'
-import { Result, ok, err } from 'neverthrow'
-import { produce, castDraft } from 'immer'
+
 import { FixedRingBuffer } from './domain/data-structures'
+import {
+  DEFAULT_TUNING,
+  frequencyToMidi,
+  type Hertz,
+  type MidiNote,
+  midiToFrequency,
+  normalizeAccidental,
+  type TuningConfig,
+} from './domain/musical-domain'
+import { AppError, ERROR_CODES } from './errors/app-error'
+import { type Observation } from './technique-types'
 
 // Ring buffer for detection history to avoid allocations in the reducer.
 const DETECTION_HISTORY_BUFFER = new FixedRingBuffer<DetectedNote>(10)
 
 export type {
-  TargetNote,
   DetectedNote,
-  PracticeStatus,
-  PracticeState,
-  PracticeEvent,
   LoopRegion,
+  PracticeEvent,
+  PracticeState,
+  PracticeStatus,
+  TargetNote,
 }
 
 /**
@@ -64,7 +66,7 @@ export function validateNoteName(name: string): Result<NoteName, AppError> {
       }),
     )
   }
-  return ok(name as NoteName)
+  return ok(name)
 }
 
 /**
@@ -163,7 +165,7 @@ export class MusicalNote {
    */
   static tryFromName(fullName: NoteName): Result<MusicalNote, AppError> {
     return validateNoteName(fullName).andThen((validName) => {
-      const match = (validName as string).match(/^([A-G])(b{1,2}|#{1,2})?([0-8])$/)
+      const match = (validName).match(/^([A-G])(b{1,2}|#{1,2})?([0-8])$/)
       if (!match) {
         return err(
           new AppError({
@@ -196,7 +198,7 @@ export class MusicalNote {
   get nameWithOctave(): NoteName {
     const result = `${this.noteName}${this.octave}`
     assertValidNoteName(result)
-    return result as NoteName
+    return result
   }
 }
 
@@ -267,7 +269,7 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
   return produce(state, (draft) => {
     switch (event.type) {
       case 'START': {
-        const payload = (event as Extract<PracticeEvent, { type: 'START' }>).payload
+        const payload = (event).payload
         draft.status = 'listening'
         draft.currentIndex = payload?.startIndex ?? 0
         draft.detectionHistory = []
@@ -287,7 +289,7 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
         break
       }
       case 'NOTE_DETECTED': {
-        const payload = (event as Extract<PracticeEvent, { type: 'NOTE_DETECTED' }>).payload
+        const payload = (event).payload
 
         // Use pre-allocated RingBuffer to avoid allocations in hot-path
         DETECTION_HISTORY_BUFFER.push(payload)
@@ -302,7 +304,7 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
         break
       }
       case 'HOLDING_NOTE': {
-        const payload = (event as Extract<PracticeEvent, { type: 'HOLDING_NOTE' }>).payload
+        const payload = (event).payload
         if (draft.status === 'listening' || draft.status === 'validating') {
           draft.status = 'validating'
           draft.holdDuration = payload.duration
@@ -317,7 +319,7 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
         break
       }
       case 'NOTE_MATCHED': {
-        const payload = (event as Extract<PracticeEvent, { type: 'NOTE_MATCHED' }>).payload
+        const payload = (event).payload
         if (draft.status === 'listening' || draft.status === 'validating') {
           const centsError = draft.detectionHistory[0] ? Math.abs(draft.detectionHistory[0].cents) : 100
           const isPerfect = payload?.isPerfect ?? centsError < 5
@@ -359,7 +361,7 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
         break
       }
       case 'JUMP_TO_NOTE': {
-        const payload = (event as Extract<PracticeEvent, { type: 'JUMP_TO_NOTE' }>).payload
+        const payload = (event).payload
         const totalNotes = draft.exercise.notes.length
         draft.currentIndex = Math.max(0, Math.min(payload.index, totalNotes - 1))
         if (draft.status === 'completed') {
@@ -370,14 +372,14 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
         break
       }
       case 'UPDATE_METRONOME': {
-        const payload = (event as Extract<PracticeEvent, { type: 'UPDATE_METRONOME' }>).payload
+        const payload = (event).payload
         if (draft.metronome) {
           Object.assign(draft.metronome, payload)
         }
         break
       }
       case 'UPDATE_LOOP_REGION': {
-        const payload = (event as Extract<PracticeEvent, { type: 'UPDATE_LOOP_REGION' }>).payload
+        const payload = (event).payload
         if (draft.loopRegion) {
           Object.assign(draft.loopRegion, payload)
         }

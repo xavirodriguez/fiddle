@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
+
+import { type PitchFrame } from '../domain/data-structures'
+import { type Cents,type Hertz } from '../domain/musical-domain'
 import { noteSegmenterMachine } from './note-segmenter'
-import { PitchFrame } from '../domain/data-structures'
-import { Hertz, Cents } from '../domain/musical-domain'
 
 describe('NoteSegmenter State Machine', () => {
   it('should start in silence state', () => {

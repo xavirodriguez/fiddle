@@ -1,6 +1,6 @@
-import { z } from 'zod'
-import superjson from 'superjson'
 import pako from 'pako'
+import superjson from 'superjson'
+import { type z } from 'zod'
 
 /**
  * Serializes and compresses a value for local storage.
@@ -45,7 +45,7 @@ function handleValidationError(name: string, error: unknown): void {
 function mergeState<T>(validated: T, current: T, mergeFn?: (p: T, c: T) => T): T {
   const hasCustomMerge = !!mergeFn
   if (hasCustomMerge) {
-    return mergeFn!(validated, current)
+    return mergeFn(validated, current)
   }
   const merged = { ...current, ...validated }
   const result = merged

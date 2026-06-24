@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { beforeEach,describe, expect, it } from 'vitest'
+
+import { type Seconds } from '@/lib/audio/tone-bridge'
+import { type Exercise } from '@/lib/domain/exercise'
+
 import { TimelineSynchronizer } from './timeline-synchronizer'
-import { Exercise } from '@/lib/domain/exercise'
-import { Seconds } from '@/lib/audio/tone-bridge'
 
 describe('TimelineSynchronizer', () => {
   let synchronizer: TimelineSynchronizer

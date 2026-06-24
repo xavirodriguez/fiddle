@@ -14,12 +14,13 @@
  * 4. Sample-accurate: Uses Tone.Transport for precise event scheduling.
  */
 
+import { err,ok, type Result } from 'neverthrow'
 import * as Tone from 'tone'
-import { Result, ok, err } from 'neverthrow'
+
+import { type BPM, makeSeconds,type Seconds } from '@/lib/audio/tone-bridge'
+import { type Exercise, Note } from '@/lib/domain/exercise'
 import { AppError, ERROR_CODES } from '@/lib/errors/app-error'
-import { MusicalNote, NoteName, formatPitchName } from '@/lib/practice-core'
-import { Seconds, BPM, makeSeconds } from '@/lib/audio/tone-bridge'
-import { Exercise, Note } from '@/lib/domain/exercise'
+import { formatPitchName,MusicalNote, NoteName } from '@/lib/practice-core'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -84,7 +85,7 @@ export class TimelineSynchronizer {
 
       exercise.notes.forEach((note, index) => {
         const noteName = formatPitchName(note.pitch)
-        const musicalNote = MusicalNote.fromName(noteName as NoteName)
+        const musicalNote = MusicalNote.fromName(noteName)
 
         const durationSeconds = note.duration * secondsPerBeat
 

@@ -29,8 +29,8 @@
  *      Garbage Collection (GC) pressure during active practice sessions.
  */
 
-import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
-import type { OpenSheetMusicDisplay, IOSMDOptions } from 'opensheetmusicdisplay'
+import type { IOSMDOptions,OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
+import React, { forwardRef,useEffect, useImperativeHandle, useRef } from 'react'
 
 // ---------------------------------------------------------------------------
 // Types

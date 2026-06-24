@@ -15,12 +15,13 @@
  * import from React, Zustand, or any UI framework.
  */
 
-import { Observable } from 'rxjs'
 import { PitchDetector } from 'pitchy'
-import { frequencyToMidi, midiToFrequency, DEFAULT_TUNING } from '../domain/musical-domain'
-import { SHARED_PITCH_FRAME } from '../domain/data-structures'
+import { Observable } from 'rxjs'
+
 import type { PitchFrame } from '../domain/data-structures'
-import type { Hertz, Cents } from '../domain/musical-domain'
+import { SHARED_PITCH_FRAME } from '../domain/data-structures'
+import type { Cents,Hertz } from '../domain/musical-domain'
+import { DEFAULT_TUNING,frequencyToMidi, midiToFrequency } from '../domain/musical-domain'
 
 /** Minimum RMS to consider the signal non-silent (noise gate). */
 const RMS_THRESHOLD = 0.01
@@ -93,7 +94,7 @@ export function createTunerStream(
         SHARED_PITCH_FRAME.centsDeviation = 0 as Cents
         SHARED_PITCH_FRAME.confidence = 0
         SHARED_PITCH_FRAME.timestamp = audioCtx!.currentTime
-        subscriber.next(SHARED_PITCH_FRAME as PitchFrame)
+        subscriber.next(SHARED_PITCH_FRAME)
         rafId = requestAnimationFrame(loop)
         return
       }
@@ -116,7 +117,7 @@ export function createTunerStream(
       }
 
       const fractionalMidi = midiResult.value
-      const nearestMidi = Math.round(fractionalMidi) as ReturnType<typeof midiResult.value.valueOf>
+      const nearestMidi = Math.round(fractionalMidi)
       const nearestFreqResult = midiToFrequency(nearestMidi as typeof midiResult.value, DEFAULT_TUNING)
       if (nearestFreqResult.isErr()) {
         rafId = requestAnimationFrame(loop)
@@ -132,7 +133,7 @@ export function createTunerStream(
       SHARED_PITCH_FRAME.confidence = confidence
       SHARED_PITCH_FRAME.timestamp = audioCtx!.currentTime
 
-      subscriber.next(SHARED_PITCH_FRAME as PitchFrame)
+      subscriber.next(SHARED_PITCH_FRAME)
       rafId = requestAnimationFrame(loop)
     }
 

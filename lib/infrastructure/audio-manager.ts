@@ -70,7 +70,7 @@ class AudioManager {
    * Suspends the AudioContext to conserve resources while not in use.
    */
   async suspend(): Promise<void> {
-    if (this.context && this.context.state === 'running') {
+    if (this.context?.state === 'running') {
       await this.context.suspend()
     }
   }
@@ -79,7 +79,7 @@ class AudioManager {
    * Resumes a suspended AudioContext.
    */
   async resume(): Promise<void> {
-    if (this.context && this.context.state === 'suspended') {
+    if (this.context?.state === 'suspended') {
       await this.context.resume()
     }
   }

@@ -1,6 +1,6 @@
-import { PitchDetectorWorkerPort } from '../../ports/audio.port';
-import { PitchFrame } from '../../domain/data-structures';
-import { Hertz, Cents } from '../../domain/musical-domain';
+import { type PitchFrame } from '../../domain/data-structures';
+import { type Cents,type Hertz } from '../../domain/musical-domain';
+import { type PitchDetectorWorkerPort } from '../../ports/audio.port';
 import { MusicalNote } from '../../practice-core';
 
 /**
@@ -27,7 +27,7 @@ export class WorkerPitchDetectorAdapter implements PitchDetectorWorkerPort {
           frequency: result.pitchHz as Hertz,
           centsDeviation: note.centsDeviation as Cents,
           confidence: result.confidence,
-          timestamp: timestamp, // Mantenemos el tiempo original del AudioContext
+          timestamp, // Mantenemos el tiempo original del AudioContext
         };
 
         this.onResultCallback(frame);

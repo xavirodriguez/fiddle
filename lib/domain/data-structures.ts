@@ -1,6 +1,7 @@
-import { Hertz, Cents } from './musical-domain';
 import { CircularBuffer } from 'mnemonist';
-import { TechniqueMetrics } from '../practice/technique-agent';
+
+import { type TechniqueMetrics } from '../practice/technique-agent';
+import { type Cents,type Hertz } from './musical-domain';
 
 /**
  * Violin-specific domain constants.
@@ -53,7 +54,7 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
  * 3. Cache-Friendly: Uses native Mnemonist iteration.
  */
 export class FixedRingBuffer<T> {
-  private readonly buffer: (T | undefined)[];
+  private readonly buffer: Array<T | undefined>;
   private head: number = 0;
   private size: number = 0;
 

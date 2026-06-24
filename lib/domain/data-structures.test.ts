@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { FixedRingBuffer, PitchFrame } from './data-structures'
-import { Hertz, Cents } from './musical-domain'
+import { describe, expect,it } from 'vitest'
+
+import { FixedRingBuffer, type PitchFrame } from './data-structures'
+import { type Cents,type Hertz } from './musical-domain'
 
 describe('PitchFrame', () => {
   it('should allow creating a PitchFrame with branded types', () => {

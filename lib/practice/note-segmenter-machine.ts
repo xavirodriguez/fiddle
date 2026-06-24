@@ -1,4 +1,4 @@
-import { setup, assign } from 'xstate';
+import { assign,setup } from 'xstate';
 
 /**
  * Events for the NoteSegmenterMachine

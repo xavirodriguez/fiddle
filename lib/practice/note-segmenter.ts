@@ -6,8 +6,9 @@
  * a single bad frame might interrupt a held note.
  */
 
-import { createMachine, assign } from 'xstate'
-import { PitchFrame } from '../domain/data-structures'
+import { assign,createMachine } from 'xstate'
+
+import { type PitchFrame } from '../domain/data-structures'
 
 export interface NoteSegmenterContext {
   consecutiveFrames: number
@@ -28,10 +29,7 @@ export const noteSegmenterMachine = createMachine(
   {
     id: 'noteSegmenter',
     initial: 'silence',
-    types: {} as {
-      context: NoteSegmenterContext
-      events: NoteSegmenterEvent
-    },
+    types: {},
     context: {
       consecutiveFrames: 0,
       minFramesForNote: 2, // At ~60FPS, 2 frames is ~33ms

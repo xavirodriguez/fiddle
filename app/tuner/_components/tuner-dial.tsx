@@ -14,13 +14,14 @@
  */
 
 import { useEffect, useRef } from 'react'
+import type { Subscription } from 'rxjs'
+
+import type { PitchFrame } from '@/lib/domain/data-structures'
 import {
-  useTunerStore,
   selectActive,
   selectError,
+  useTunerStore,
 } from '@/stores/tuner-store'
-import type { Subscription } from 'rxjs'
-import type { PitchFrame } from '@/lib/domain/data-structures'
 
 // ---------------------------------------------------------------------------
 // Constants

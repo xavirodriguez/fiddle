@@ -1,6 +1,7 @@
-import { Result, ok, err } from 'neverthrow';
+import { err,ok, type Result } from 'neverthrow';
+
 import { AppError, ERROR_CODES } from '../../errors/app-error';
-import { AudioCapturePort, AudioDeviceEvent } from '../../ports/audio.port';
+import { type AudioCapturePort, type AudioDeviceEvent } from '../../ports/audio.port';
 
 /**
  * WebAudioAdapter
@@ -15,7 +16,7 @@ export class WebAudioAdapter implements AudioCapturePort {
   private filter: BiquadFilterNode | null = null;
   private compressor: DynamicsCompressorNode | null = null;
   private workletNode: AudioWorkletNode | null = null;
-  private eventCallbacks: Map<AudioDeviceEvent, ((data?: unknown) => void)[]> = new Map();
+  private eventCallbacks: Map<AudioDeviceEvent, Array<(data?: unknown) => void>> = new Map();
 
   constructor() {}
 

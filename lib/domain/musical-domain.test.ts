@@ -1,14 +1,15 @@
-import { describe, it, expect } from 'vitest'
-import {
-  makeHertz,
-  makeCents,
-  makeMidiNote,
-  frequencyToMidi,
-  midiToFrequency,
-  Hertz,
-  MidiNote,
-} from './musical-domain'
+import { describe, expect,it } from 'vitest'
+
 import { AppError } from '../errors/app-error'
+import {
+  frequencyToMidi,
+  type Hertz,
+  makeCents,
+  makeHertz,
+  makeMidiNote,
+  type MidiNote,
+  midiToFrequency,
+} from './musical-domain'
 
 describe('Musical Domain Nominal Types', () => {
   describe('makeHertz', () => {

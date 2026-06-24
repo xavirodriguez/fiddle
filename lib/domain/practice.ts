@@ -6,8 +6,8 @@
  * Pure types only — no React, Zustand, or browser API dependencies.
  */
 
+import type { NoteTechnique,Observation } from '../technique-types'
 import type { Note } from './exercise'
-import type { Observation, NoteTechnique } from '../technique-types'
 
 // ---------------------------------------------------------------------------
 // Session status

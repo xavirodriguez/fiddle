@@ -1,6 +1,7 @@
 import * as Tone from 'tone'
-import { AudioPlayerPort } from '../../ports/audio-player.port'
-import { ToneBridge, Seconds, BPM } from '../../audio/tone-bridge'
+
+import { BPM,Seconds, ToneBridge } from '../../audio/tone-bridge'
+import { type AudioPlayerPort } from '../../ports/audio-player.port'
 
 /**
  * ToneAudioPlayer

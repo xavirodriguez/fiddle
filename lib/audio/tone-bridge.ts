@@ -14,10 +14,11 @@
  * 4. Error Handling: Uses neverthrow to manage initialization results.
  */
 
+import { err,ok, type Result } from 'neverthrow'
 import * as Tone from 'tone'
-import { audioManager } from '@/lib/infrastructure/audio-manager'
-import { Result, ok, err } from 'neverthrow'
+
 import { AppError, ERROR_CODES } from '@/lib/errors/app-error'
+import { audioManager } from '@/lib/infrastructure/audio-manager'
 
 /**
  * Branded type for time in seconds.

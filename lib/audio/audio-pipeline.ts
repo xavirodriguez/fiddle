@@ -1,12 +1,13 @@
-import { Subject, Observable } from 'rxjs'
-import { filter, tap, share, map } from 'rxjs/operators'
-import { PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
-import { PitchDetectionResult } from '../pitch-detector'
-import { Hertz, Cents } from '../domain/musical-domain'
-import { MusicalNote } from '../practice-core'
+import { type Observable,Subject } from 'rxjs'
+import { filter, map,share, tap } from 'rxjs/operators'
 import { createActor } from 'xstate'
+
+import { type PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
+import { Cents,type Hertz } from '../domain/musical-domain'
+import { PitchDetectionResult } from '../pitch-detector'
 import { noteSegmenterMachine } from '../practice/note-segmenter-machine'
 import { TechniqueAgent } from '../practice/technique-agent'
+import { MusicalNote } from '../practice-core'
 
 /**
  * RawPitchEvent
@@ -67,7 +68,7 @@ export class AudioPipeline {
         SHARED_PITCH_FRAME.frequency = event.pitchHz as Hertz
         SHARED_PITCH_FRAME.confidence = event.confidence
         SHARED_PITCH_FRAME.timestamp = event.timestamp
-        return SHARED_PITCH_FRAME as PitchFrame
+        return SHARED_PITCH_FRAME
       }),
 
       share()

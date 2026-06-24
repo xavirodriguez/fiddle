@@ -1,6 +1,6 @@
 "use client"
 
-import { Play, Square, RotateCcw, ChevronLeft, ChevronRight, Repeat } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Play, Repeat,RotateCcw, Square } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Types

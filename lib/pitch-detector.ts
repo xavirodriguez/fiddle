@@ -4,8 +4,8 @@
  * Wraps the `pitchy` and `meyda` libraries to provide pitch detection and
  * spectral analysis from a Float32Array buffer.
  */
-import { PitchDetector as PitchyDetector } from 'pitchy'
 import Meyda from 'meyda'
+import { PitchDetector as PitchyDetector } from 'pitchy'
 
 /**
  * The result of a single pitch detection analysis.

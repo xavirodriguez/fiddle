@@ -20,10 +20,11 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { useTunerStore, selectCents, selectFrequency, selectConfidence, selectActive } from '@/stores/tuner-store'
-import { usePracticeStore } from '@/stores/practice-store'
+
 import { VIOLIN_TOLERANCE_CENTS } from '@/lib/domain/data-structures'
 import type { PracticeStatus } from '@/lib/domain/practice'
+import { usePracticeStore } from '@/stores/practice-store'
+import { selectActive,selectCents, selectConfidence, selectFrequency, useTunerStore } from '@/stores/tuner-store'
 
 // ---------------------------------------------------------------------------
 // Constants — defined outside the component so they are never reallocated.
@@ -132,7 +133,7 @@ export function FeedbackOverlay() {
       const s = useTunerStore.getState()
 
       const cents      = s.cents      as number
-      const confidence = s.confidence as number
+      const confidence = s.confidence
       const frequency  = s.frequency  as number
       const active     = s.active
 

@@ -1,7 +1,8 @@
-import { StateCreator } from 'zustand'
+import { type StateCreator } from 'zustand'
+
+import { type Note as TargetNote } from '@/lib/domain/exercise'
+import type { PracticeEvent,PracticeState } from '@/lib/practice-core'
 import { reducePracticeEvent } from '@/lib/practice-core'
-import type { PracticeState, PracticeEvent } from '@/lib/practice-core'
-import { Note as TargetNote } from '@/lib/domain/exercise'
 
 const EMPTY_EXERCISE = {
   id: '__empty__',

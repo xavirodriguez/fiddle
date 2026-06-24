@@ -81,6 +81,6 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
       confidence,
       timestamp
     },
-    buffer: buffer
+    buffer
   }, [buffer.buffer]);
 };

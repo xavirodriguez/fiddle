@@ -1,6 +1,7 @@
-import * as ss from 'simple-statistics';
-import { PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structures';
 import { CircularBuffer } from 'mnemonist';
+import * as ss from 'simple-statistics';
+
+import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structures';
 
 /**
  * TechniqueMetrics

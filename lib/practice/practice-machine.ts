@@ -1,5 +1,6 @@
-import { createMachine, assign } from 'xstate';
-import { PitchFrame } from '../domain/data-structures';
+import { assign,createMachine } from 'xstate';
+
+import { type PitchFrame } from '../domain/data-structures';
 import { frequencyToMidi } from '../domain/musical-domain';
 
 export interface PracticeContext {
@@ -21,10 +22,7 @@ export type PracticeEvent =
 export const practiceMachine = createMachine({
   id: 'practice',
   initial: 'idle',
-  types: {} as {
-    context: PracticeContext;
-    events: PracticeEvent;
-  },
+  types: {},
   context: ({ input }: { input?: Partial<PracticeContext> }) => ({
     targetMidi: 0,
     toleranceCents: 15,

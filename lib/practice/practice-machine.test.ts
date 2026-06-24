@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
-import { practiceMachine } from './practice-machine'
+import { describe, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
-import { PitchFrame } from '../domain/data-structures'
-import { Hertz, Cents } from '../domain/musical-domain'
+
+import { type PitchFrame } from '../domain/data-structures'
+import { type Cents,type Hertz } from '../domain/musical-domain'
+import { practiceMachine } from './practice-machine'
 
 describe('Practice State Machine (XState v5)', () => {
   it('should transition from idle to listening on START', () => {

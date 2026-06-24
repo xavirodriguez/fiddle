@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { generateSyntheticViolinSignal } from './signal-tester'
+import { describe, expect,it } from 'vitest'
+
 import { PitchDetector } from '../pitch-detector'
+import { generateSyntheticViolinSignal } from './signal-tester'
 
 describe('Signal Integration QA', () => {
   it('should detect the correct frequency from a complex synthetic violin signal (A4)', () => {

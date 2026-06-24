@@ -1,6 +1,7 @@
-import { Result } from 'neverthrow'
-import { AppError } from '../errors/app-error'
-import { PitchFrame } from '../domain/data-structures'
+import { type Result } from 'neverthrow'
+
+import { type PitchFrame } from '../domain/data-structures'
+import { type AppError } from '../errors/app-error'
 
 /**
  * Event types for audio hardware changes.

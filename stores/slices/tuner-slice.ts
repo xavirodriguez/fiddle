@@ -1,7 +1,8 @@
-import { StateCreator } from 'zustand'
-import { Hertz, Cents } from '@/lib/domain/musical-domain'
-import type { PitchFrame } from '@/lib/domain/data-structures'
 import type { Subscription } from 'rxjs'
+import { type StateCreator } from 'zustand'
+
+import type { PitchFrame } from '@/lib/domain/data-structures'
+import { type Cents,type Hertz } from '@/lib/domain/musical-domain'
 
 export interface TunerSlice {
   frequency: Hertz

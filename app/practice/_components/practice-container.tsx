@@ -8,14 +8,16 @@
  * blocks the initial page paint.
  */
 
-import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { usePracticeStore } from '@/stores/practice-store'
-import { PracticeToolbar } from './practice-toolbar'
-import { FeedbackOverlay } from './feedback-overlay'
-import { ScoreViewerRef } from './score-viewer'
-import { practiceService } from '@/lib/practice/practice-service'
+import { useEffect, useRef } from 'react'
+
 import { audioManager } from '@/lib/infrastructure/audio-manager'
+import { practiceService } from '@/lib/practice/practice-service'
+import { usePracticeStore } from '@/stores/practice-store'
+
+import { FeedbackOverlay } from './feedback-overlay'
+import { PracticeToolbar } from './practice-toolbar'
+import { type ScoreViewerRef } from './score-viewer'
 
 // ---------------------------------------------------------------------------
 // Lazy ScoreViewer — loaded only on the client, no SSR.

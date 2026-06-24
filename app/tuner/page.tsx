@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+
 import { TunerDial } from './_components/tuner-dial'
 
 export const metadata: Metadata = {

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+
 import { PracticeContainer } from './_components/practice-container'
 
 export const metadata: Metadata = {

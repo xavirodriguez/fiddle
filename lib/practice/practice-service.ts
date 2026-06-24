@@ -1,20 +1,22 @@
-import { audioManager } from '../infrastructure/audio-manager'
-import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
-import { PitchDetector } from '../pitch-detector'
+import { type Subscription } from 'rxjs'
+import * as Tone from 'tone'
+import { createActor } from 'xstate'
+
 import { usePracticeStore } from '@/stores/practice-store'
 import { useTunerStore } from '@/stores/tuner-store'
-import { MusicalNote, formatPitchName } from '../practice-core'
-import { lerp, Hertz, Cents, frequencyToMidi } from '../domain/musical-domain'
-import { Note as TargetNote, Exercise } from '../domain/exercise'
-import { DetectedNote, PracticeState } from '../domain/practice'
-import { SHARED_PITCH_FRAME, MutablePitchFrame, PitchFrame } from '../domain/data-structures'
-import { practiceMachine, PracticeEvent } from './practice-machine'
-import { createActor } from 'xstate'
-import { TimelineSynchronizer, MusicalEvent } from './timeline-synchronizer'
-import { ToneBridge, Seconds } from '../audio/tone-bridge'
-import { audioPipeline, RawPitchEvent } from '../audio/audio-pipeline'
-import { Subscription } from 'rxjs'
-import * as Tone from 'tone'
+
+import { audioPipeline, type RawPitchEvent } from '../audio/audio-pipeline'
+import { type Seconds,ToneBridge } from '../audio/tone-bridge'
+import { type MutablePitchFrame, type PitchFrame,SHARED_PITCH_FRAME } from '../domain/data-structures'
+import { type Exercise,type Note as TargetNote } from '../domain/exercise'
+import { type Cents, frequencyToMidi,type Hertz, lerp } from '../domain/musical-domain'
+import { type DetectedNote, type PracticeState } from '../domain/practice'
+import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
+import { audioManager } from '../infrastructure/audio-manager'
+import { PitchDetector } from '../pitch-detector'
+import { formatPitchName,MusicalNote } from '../practice-core'
+import { type PracticeEvent,practiceMachine } from './practice-machine'
+import { type MusicalEvent,TimelineSynchronizer } from './timeline-synchronizer'
 
 /**
  * PracticeService
@@ -40,7 +42,7 @@ export class PracticeService {
   /** Pre-allocated event object for the practice machine */
   private readonly REUSABLE_PITCH_EVENT: Extract<PracticeEvent, { type: 'PITCH_DETECTED' }> = {
     type: 'PITCH_DETECTED',
-    frame: SHARED_PITCH_FRAME as PitchFrame,
+    frame: SHARED_PITCH_FRAME,
   }
 
   private actor = createActor(practiceMachine, {
@@ -119,7 +121,7 @@ export class PracticeService {
     tuner.updatePitch(frame.frequency, frame.confidence)
 
     // 2. Real-time sync verification (O(1) Zero-Allocation)
-    const midiResult = frequencyToMidi(frame.frequency as Hertz)
+    const midiResult = frequencyToMidi(frame.frequency)
     const detectedMidi = midiResult.isOk() ? midiResult.value : 0
     const verification = this.synchronizer.verify(now, detectedMidi)
 
@@ -163,7 +165,7 @@ export class PracticeService {
 
     this.updateTargetCache(practiceState)
 
-    const detectedNote = this.mapFrameToDetectedNote(frame as MutablePitchFrame, MusicalNote.fromFrequencyShared(frame.frequency).nameWithOctave)
+    const detectedNote = this.mapFrameToDetectedNote(frame, MusicalNote.fromFrequencyShared(frame.frequency).nameWithOctave)
 
     if (shouldUpdateStore) {
       store.internalUpdate({ type: 'NOTE_DETECTED', payload: detectedNote })

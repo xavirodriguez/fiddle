@@ -20,8 +20,8 @@
  * upward only via callbacks, never importing from stores directly.
  */
 
-import React, { useEffect, useRef, useCallback } from 'react'
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
+import React, { useCallback,useEffect, useRef } from 'react'
 
 // ---------------------------------------------------------------------------
 // Types

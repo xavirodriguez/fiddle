@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach,describe, expect, it } from 'vitest';
+
+import { type PitchFrame } from '../domain/data-structures';
+import { type Cents,type Hertz } from '../domain/musical-domain';
 import { TechniqueAgent } from './technique-agent';
-import { PitchFrame } from '../domain/data-structures';
-import { Hertz, Cents } from '../domain/musical-domain';
 
 describe('TechniqueAgent', () => {
   let agent: TechniqueAgent;

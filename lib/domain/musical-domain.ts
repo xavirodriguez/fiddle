@@ -6,8 +6,9 @@
  * error handling.
  */
 
+import { err, ok, type Result } from 'neverthrow';
 import { z } from 'zod';
-import { ok, err, Result } from 'neverthrow';
+
 import { AppError, ERROR_CODES } from '../errors/app-error';
 
 /**
