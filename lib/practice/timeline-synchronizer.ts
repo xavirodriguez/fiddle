@@ -41,10 +41,20 @@ export interface MusicalEvent {
  * Feedback provided when verifying a detected pitch against the timeline.
  */
 export interface SyncVerification {
-  readonly isCorrectPitch: boolean
-  readonly timingError: Seconds
-  readonly expectedMidi: number
-  readonly currentNoteIndex: number
+  isCorrectPitch: boolean
+  timingError: Seconds
+  expectedMidi: number
+  currentNoteIndex: number
+}
+
+/**
+ * Shared mutable instance for zero-allocation verification.
+ */
+const SHARED_VERIFICATION_RESULT: SyncVerification = {
+  isCorrectPitch: false,
+  timingError: 0 as Seconds,
+  expectedMidi: -1,
+  currentNoteIndex: -1,
 }
 
 // ---------------------------------------------------------------------------
@@ -58,6 +68,10 @@ export class TimelineSynchronizer {
 
   /**
    * Compiles an exercise into a deterministic timeline.
+   *
+   * Complexity Analysis:
+   * - Temporal: O(N) where N is the number of notes in the exercise.
+   * - Spatial: O(N) to store the compiled events.
    */
   compile(exercise: Exercise): Result<void, AppError> {
     try {
@@ -112,15 +126,20 @@ export class TimelineSynchronizer {
 
   /**
    * Verifies a detected pitch against the timeline in O(1).
+   * Uses a shared mutable object to ensure zero-allocation in the hot path.
    *
    * @param currentTime - Current audio clock time in seconds.
    * @param detectedMidi - The MIDI note currently detected from the mic.
    * @param tolerance - Maximum allowed timing deviation (default 100ms).
+   *
+   * Complexity Analysis:
+   * - Temporal: O(1) average case, assuming sequential playback.
+   * - Spatial: O(1) as it reuses a singleton result object.
    */
   verify(
     currentTime: Seconds,
     detectedMidi: number,
-    tolerance: Seconds = 0.1 as Seconds
+    tolerance: Seconds = 0.1 as Seconds,
   ): SyncVerification {
     // 1. Find the active event (O(1) assuming incremental calls)
     // In a real-world scenario with seeking, we'd need a binary search or pointer reset
@@ -134,23 +153,22 @@ export class TimelineSynchronizer {
     const currentEvent = this.timeline[this.currentEventPointer]
 
     if (!currentEvent) {
-      return {
-        isCorrectPitch: false,
-        timingError: 0 as Seconds,
-        expectedMidi: -1,
-        currentNoteIndex: -1,
-      }
+      SHARED_VERIFICATION_RESULT.isCorrectPitch = false
+      SHARED_VERIFICATION_RESULT.timingError = 0 as Seconds
+      SHARED_VERIFICATION_RESULT.expectedMidi = -1
+      SHARED_VERIFICATION_RESULT.currentNoteIndex = -1
+      return SHARED_VERIFICATION_RESULT
     }
 
     const timingError = (currentTime - currentEvent.startTime) as Seconds
     const isCorrectPitch = Math.round(detectedMidi) === currentEvent.midiNote
 
-    return {
-      isCorrectPitch,
-      timingError,
-      expectedMidi: currentEvent.midiNote,
-      currentNoteIndex: currentEvent.noteIndex,
-    }
+    SHARED_VERIFICATION_RESULT.isCorrectPitch = isCorrectPitch
+    SHARED_VERIFICATION_RESULT.timingError = timingError
+    SHARED_VERIFICATION_RESULT.expectedMidi = currentEvent.midiNote
+    SHARED_VERIFICATION_RESULT.currentNoteIndex = currentEvent.noteIndex
+
+    return SHARED_VERIFICATION_RESULT
   }
 
   /**

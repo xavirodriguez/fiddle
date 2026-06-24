@@ -49,6 +49,11 @@ export class ToneBridge {
   /**
    * Synchronizes Tone.js with the application's global AudioContext.
    * MUST be called after AudioManager.initialize().
+   *
+   * Architectural Decisions:
+   * 1. Sharing Context: Prevents audio clock drift and resource contention.
+   * 2. Idempotency: Multiple calls are safe; initialization happens once.
+   * 3. Nominal Typing: Branded types prevent mixing BPM/Seconds with raw numbers.
    */
   static async initialize(): Promise<Result<void, AppError>> {
     const nativeContext = audioManager.getContext()
@@ -56,9 +61,10 @@ export class ToneBridge {
     if (!nativeContext) {
       return err(
         new AppError({
-          message: 'Cannot initialize ToneBridge: native AudioContext is null. Ensure AudioManager is initialized first.',
+          message:
+            'Cannot initialize ToneBridge: native AudioContext is null. Ensure AudioManager is initialized first.',
           code: ERROR_CODES.HARDWARE_NOT_FOUND,
-        })
+        }),
       )
     }
 
@@ -69,7 +75,8 @@ export class ToneBridge {
         Tone.setContext(toneContext)
 
         // Ensure the transport is synchronized with the context
-        // @ts-ignore - Some versions of Tone.js have context as read-only but it is necessary to set for synchronization
+        // This is critical for sample-accurate scheduling
+        // @ts-ignore - Transport context is sometimes typed as read-only but must be set here
         Tone.getTransport().context = toneContext
 
         this.isInitialized = true
@@ -87,7 +94,7 @@ export class ToneBridge {
         new AppError({
           message: `ToneBridge initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: ERROR_CODES.INTERNAL_ERROR,
-        })
+        }),
       )
     }
   }
@@ -97,6 +104,13 @@ export class ToneBridge {
    */
   static getCurrentTime(): Seconds {
     return makeSeconds(Tone.now())
+  }
+
+  /**
+   * Updates the global transport BPM using the nominal BPM type.
+   */
+  static setBpm(bpm: BPM): void {
+    Tone.getTransport().bpm.value = bpm
   }
 
   /**
