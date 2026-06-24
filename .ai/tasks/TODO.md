@@ -125,9 +125,9 @@
     * [x] Diseñar el `AudioPipeline` usando `rxjs` en `lib/audio/audio-pipeline.ts`.
     * [x] Implementar `xstate` para el `NoteSegmenter` (SILENCE ↔ NOTE) y el ciclo de vida de la sesión.
 
-* [ ] **6.4. Análisis Estadístico y Extracción de Features (Domain/Infrastructure)**
-    * [ ] Sustituir cálculos manuales de desviación y regresión por `simple-statistics` en el `TechniqueAgent`.
-    * [ ] Integrar `meyda` para el análisis espectral y `pitchy` para el algoritmo de detección YIN/MPM.
+* [x] **6.4 Análisis Estadístico y Extracción de Features (Domain/Infrastructure)**
+    * [x] Sustituir cálculos manuales de desviación y regresión por `simple-statistics` en el `TechniqueAgent`.
+    * [x] Integrar `meyda` para el análisis espectral y `pitchy` para el algoritmo de detección YIN/MPM.
 
 * [ ] **6.5. Motor de Audio y Persistencia Reactiva (Infrastructure/Adapters)**
     * [ ] Migrar el metrónomo y scheduling a `tone.js`.

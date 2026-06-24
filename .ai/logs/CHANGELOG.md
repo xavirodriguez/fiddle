@@ -19,6 +19,8 @@
 - **NoteSegmenter:** Added XState machine for robust note onset/offset detection with debouncing (Task 6.3).
 - **AudioPipeline:** Implemented RxJS-based reactive audio processing pipeline (Task 6.3).
 - **Unit Tests:** Added tests for `NoteSegmenter` and `AudioPipeline`.
+- **Technique Analysis:** Integrated `simple-statistics` for stability and trend analysis in `TechniqueAgent` (Task 6.4).
+- **Advanced DSP:** Optimized `PitchDetector` with `pitchy` and `meyda` for zero-allocation performance (Task 6.4).
 
 ### Changed
 - **PracticeService:** Refactored to use `AudioPipeline` instead of manual RAF loop.
