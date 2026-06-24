@@ -1,6 +1,7 @@
+import { firstValueFrom } from 'rxjs'
 import { beforeEach,describe, expect, it, vi } from 'vitest'
 
-import { AudioPipeline, RawPitchEvent } from './audio-pipeline'
+import { AudioPipeline, type RawPitchEvent } from './audio-pipeline'
 
 describe('AudioPipeline', () => {
   let pipeline: AudioPipeline;
@@ -15,7 +16,8 @@ describe('AudioPipeline', () => {
     const pitchPromise = firstValueFrom(pipeline.pitchFrame$)
 
     // We need to push multiple frames to get past the segmenter's debounce logic
-    for (let i = 0; i < 15; i++) {
+    // noteSegmenterMachine triggers NOTE after 3 consecutive frames with confidence > 0.8 and rms > 0.01
+    for (let i = 0; i < 5; i++) {
       pipeline.push({
         pitchHz: 440,
         confidence: 0.9,

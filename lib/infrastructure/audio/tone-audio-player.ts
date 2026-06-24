@@ -57,11 +57,13 @@ export class ToneAudioPlayer implements AudioPlayerPort {
     if (this.clickLoop) {
       this.clickLoop.stop()
     }
+    Tone.getTransport().stop()
   }
 
   stopAll(): void {
     this.synth.releaseAll()
     this.stopMetronome()
+    Tone.getTransport().cancel()
   }
 
   async cleanup(): Promise<void> {

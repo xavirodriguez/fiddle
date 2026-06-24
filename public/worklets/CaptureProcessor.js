@@ -8,6 +8,8 @@
 import { PitchDetector } from './pitchy.js';
 import './meyda.js'; // Meyda attaches to global scope
 
+const MEYDA_FEATURES = ['rms', 'spectralFlatness', 'spectralCentroid'];
+
 class CaptureProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
@@ -39,34 +41,48 @@ class CaptureProcessor extends AudioWorkletProcessor {
 
   process(inputs, outputs) {
     const input = inputs[0];
-    if (input && input.length > 0) {
-      const channelData = input[0];
+    if (!input || input.length === 0) return true;
 
-      for (let i = 0; i < channelData.length; i++) {
-        this._buffer[this._ptr++] = channelData[i];
+    const channelData = input[0];
+    const bufferSize = this._bufferSize;
+    const buffer = this._buffer;
+    const detector = this._detector;
 
-        if (this._ptr >= this._bufferSize) {
-          if (this._detector && globalThis.Meyda) {
-            // 1. Pitch Detection
-            const [pitchHz, confidence] = this._detector.findPitch(this._buffer, this._sampleRate);
+    for (let i = 0; i < channelData.length; i++) {
+      buffer[this._ptr++] = channelData[i];
 
-            // 2. Spectral Analysis via Meyda
-            const features = globalThis.Meyda.extract(['rms', 'spectralFlatness', 'spectralCentroid'], this._buffer);
+      if (this._ptr >= bufferSize) {
+        if (detector && globalThis.Meyda) {
+          // 1. Spectral Analysis (First pass for Noise Gate)
+          // We accept one object allocation per 2048 samples (~46ms) as it's within library constraints
+          const features = globalThis.Meyda.extract(MEYDA_FEATURES, buffer);
+          const rms = features?.rms || 0;
 
-            // 3. Update shared result
-            this._result.pitchHz = pitchHz || 0;
-            this._result.confidence = confidence || 0;
-            this._result.rms = features.rms || 0;
-            this._result.spectralFlatness = features.spectralFlatness || 0;
-            this._result.spectralCentroid = features.spectralCentroid || 0;
-            this._result.timestamp = currentTime;
+          let pitchHz = 0;
+          let confidence = 0;
 
-            // 4. Post results to main thread
-            this.port.postMessage(this._result);
+          // 2. Conditional Pitch Detection (Internal Noise Gate)
+          // Only run heavy pitch detection if there's significant signal
+          if (rms > 0.01) {
+            const pitchResult = detector.findPitch(buffer, this._sampleRate);
+            pitchHz = pitchResult[0] || 0;
+            confidence = pitchResult[1] || 0;
           }
 
-          this._ptr = 0;
+          // 3. Update shared result (Zero-Allocation)
+          const res = this._result;
+          res.pitchHz = pitchHz;
+          res.confidence = confidence;
+          res.rms = rms;
+          res.spectralFlatness = features?.spectralFlatness || 0;
+          res.spectralCentroid = features?.spectralCentroid || 0;
+          res.timestamp = currentTime;
+
+          // 4. Post results to main thread
+          this.port.postMessage(res);
         }
+
+        this._ptr = 0;
       }
     }
     return true;
