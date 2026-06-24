@@ -1,51 +1,78 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { AudioPipeline } from './audio-pipeline'
-import { AudioCapturePort } from '../ports/audio.port'
-import { firstValueFrom, take, toArray } from 'rxjs'
+import { AudioPipeline, RawPitchEvent } from './audio-pipeline'
 
 describe('AudioPipeline', () => {
-  let mockCapturePort: any
+  let pipeline: AudioPipeline;
 
   beforeEach(() => {
-    mockCapturePort = {
-      sampleRate: 44100,
-      initialize: vi.fn().mockResolvedValue(undefined),
-      startStream: vi.fn(),
-      stopStream: vi.fn().mockResolvedValue(undefined),
-      on: vi.fn(),
-      getCurrentTime: vi.fn().mockReturnValue(1.0),
+    pipeline = new AudioPipeline()
+  })
+
+  it('should process frames and emit pitch events when in NOTE state', async () => {
+    const events: any[] = [];
+    // Note: We are subscribing to a stream that emits the SAME object.
+    // To test history we would need to clone, but here we just check the latest state.
+    pipeline.pitchFrame$.subscribe(frame => events.push(frame.frequency));
+
+    const rawEvent: RawPitchEvent = {
+      pitchHz: 440,
+      confidence: 0.9,
+      rms: 0.1,
+      spectralFlatness: 0.1,
+      spectralCentroid: 1000,
+      timestamp: 1.0
+    };
+
+    pipeline.push(rawEvent); // 1
+    pipeline.push(rawEvent); // 2
+    pipeline.push(rawEvent); // 3
+    pipeline.push(rawEvent); // 4 -> NOTE
+    pipeline.push(rawEvent); // 5 -> Emit
+
+    expect(events.length).toBeGreaterThan(0);
+    expect(events[0]).toBe(440);
+  })
+
+  it('should calculate centsDeviation correctly', async () => {
+    let capturedCents = -100;
+    pipeline.pitchFrame$.subscribe(frame => {
+        capturedCents = frame.centsDeviation;
+    });
+
+    const rawEvent: RawPitchEvent = {
+      pitchHz: 441, // Slightly sharp from A4 (440Hz)
+      confidence: 0.9,
+      rms: 0.1,
+      spectralFlatness: 0.1,
+      spectralCentroid: 1000,
+      timestamp: 1.0
+    };
+
+    for(let i=0; i<10; i++) pipeline.push(rawEvent);
+
+    expect(capturedCents).toBeGreaterThan(0);
+    expect(capturedCents).toBeLessThan(10);
+  })
+
+  it('should include technique metrics after window is full', async () => {
+    let techniquePresent = false;
+    pipeline.pitchFrame$.subscribe(frame => {
+        if (frame.technique) techniquePresent = true;
+    });
+
+    const rawEvent: RawPitchEvent = {
+      pitchHz: 440,
+      confidence: 0.9,
+      rms: 0.1,
+      spectralFlatness: 0.1,
+      spectralCentroid: 1000,
+      timestamp: 1.0
+    };
+
+    for (let i = 0; i < 40; i++) {
+        pipeline.push(rawEvent);
     }
-  })
 
-  it('should process frames and emit pitch events', async () => {
-    const pipeline = new AudioPipeline(mockCapturePort)
-
-    // Simulate audio data
-    const buffer = new Float32Array(2048).fill(0.1)
-
-    // We need to trigger the callback passed to startStream
-    let frameCallback: (buf: Float32Array) => void = () => {}
-    mockCapturePort.startStream.mockImplementation((cb: any) => {
-      frameCallback = cb
-      return Promise.resolve()
-    })
-
-    await pipeline.start()
-
-    const pitchPromise = firstValueFrom(pipeline.pitch$)
-    frameCallback(buffer)
-
-    const frame = await pitchPromise
-    expect(frame).toBeDefined()
-    expect(frame.timestamp).toBe(1.0)
-  })
-
-  it('should reset segmenter actor on reset()', () => {
-    const pipeline = new AudioPipeline(mockCapturePort)
-    // Accessing private for test verification
-    const sendSpy = vi.spyOn((pipeline as any).segmenterActor, 'send')
-
-    pipeline.reset()
-    expect(sendSpy).toHaveBeenCalledWith({ type: 'RESET' })
+    expect(techniquePresent).toBe(true);
   })
 })

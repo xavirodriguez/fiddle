@@ -24,6 +24,18 @@ export interface PitchDetectionResult {
 }
 
 /**
+ * Pre-allocated shared object to avoid GC pressure in high-frequency detection loops.
+ * @internal
+ */
+export const SHARED_DETECTION_RESULT: PitchDetectionResult = {
+  pitchHz: 0,
+  confidence: 0,
+  rms: 0,
+  spectralFlatness: 0,
+  spectralCentroid: 0,
+};
+
+/**
  * Detects pitch and spectral features from a PCM audio buffer.
  */
 export class PitchDetector {
@@ -64,27 +76,28 @@ export class PitchDetector {
 
   /**
    * Detects pitch and extracts spectral features.
-   * Zero-allocation: results are returned in a fresh object, but internal
-   * calculations use pre-allocated memory from pitchy/meyda.
+   * Internal calculations use pre-allocated memory from pitchy/meyda.
+   * Reuses SHARED_DETECTION_RESULT to follow Zero-Allocation mandate.
    */
   detect(buffer: Float32Array): PitchDetectionResult {
-    const [pitchHz, confidence] = this.detector.findPitch(buffer, this.sampleRate)
+    const result = this.detector.findPitch(buffer, this.sampleRate);
+    const pitchHz = result[0];
+    const confidence = result[1];
 
     // Use Meyda for feature extraction
-    const po2Buffer = this.getPowerOfTwoBuffer(buffer)
-    const features = Meyda.extract(['rms', 'spectralFlatness', 'spectralCentroid'], po2Buffer as unknown as any, this.sampleRate as unknown as any) as {
-      rms: number
-      spectralFlatness: number
-      spectralCentroid: number
-    }
+    const po2Buffer = this.getPowerOfTwoBuffer(buffer);
 
-    return {
-      pitchHz: pitchHz ?? 0,
-      confidence: confidence ?? 0,
-      rms: features?.rms ?? 0,
-      spectralFlatness: features?.spectralFlatness ?? 0,
-      spectralCentroid: features?.spectralCentroid ?? 0,
-    }
+    // Meyda.extract might return null or unexpected types if input is invalid
+    const features = Meyda.extract(['rms', 'spectralFlatness', 'spectralCentroid'], po2Buffer) as Record<string, number | null>;
+
+    const dr = SHARED_DETECTION_RESULT;
+    dr.pitchHz = pitchHz ?? 0;
+    dr.confidence = confidence ?? 0;
+    dr.rms = features?.rms ?? 0;
+    dr.spectralFlatness = features?.spectralFlatness ?? 0;
+    dr.spectralCentroid = features?.spectralCentroid ?? 0;
+
+    return dr;
   }
 
   /**
@@ -99,19 +112,19 @@ export class PitchDetector {
     rmsThreshold = 0.01,
   ): PitchDetectionResult {
     // Use Meyda for RMS
-    const po2Buffer = this.getPowerOfTwoBuffer(buffer)
-    const rms = Meyda.extract('rms', po2Buffer as unknown as any) as number
+    const po2Buffer = this.getPowerOfTwoBuffer(buffer);
+    const rms = (Meyda.extract('rms', po2Buffer) as number) ?? 0;
 
-    if (rms < rmsThreshold) {
-      return {
-        pitchHz: 0,
-        confidence: 0,
-        rms,
-        spectralFlatness: 0,
-        spectralCentroid: 0,
-      }
+    if (rms < (rmsThreshold || 0.01)) {
+      const dr = SHARED_DETECTION_RESULT;
+      dr.pitchHz = 0;
+      dr.confidence = 0;
+      dr.rms = rms;
+      dr.spectralFlatness = 0;
+      dr.spectralCentroid = 0;
+      return dr;
     }
 
-    return this.detect(buffer)
+    return this.detect(buffer);
   }
 }

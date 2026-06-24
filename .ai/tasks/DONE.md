@@ -15,3 +15,4 @@
 | 6.1 | Refactorización de Estructuras de Datos (Domain) | ~50 |
 | 6.2 | Integración de Manejo Funcional de Errores e Inmutabilidad | ~100 |
 | 6.3 | Pipeline Reactivo y Máquinas de Estado | ~150 |
+| 6.4 | Análisis Estadístico y Extracción de Features | ~200 |
