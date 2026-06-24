@@ -125,6 +125,45 @@ export class PitchDetector {
       return dr;
     }
 
-    return this.detect(buffer);
+    // AMDF refinement to handle octave doubling (common in violins)
+    // Run only if we pass the noise gate
+    const amdfPitch = this.detectAMDF(buffer, this.sampleRate);
+
+    const result = this.detect(buffer);
+
+    // If AMDF suggests a significantly lower pitch (octave), favor AMDF if confidence is high
+    if (amdfPitch > 0 && result.pitchHz > amdfPitch * 1.8 && result.pitchHz < amdfPitch * 2.2) {
+       result.pitchHz = amdfPitch;
+    }
+
+    return result;
+  }
+
+  /**
+   * Simple Average Magnitude Difference Function (AMDF)
+   * Good for finding the fundamental period when harmonics are strong.
+   */
+  private detectAMDF(buffer: Float32Array, sampleRate: number): number {
+    const minFreq = 150; // Below Violin G3 (196Hz)
+    const maxFreq = 3000;
+    const minPeriod = Math.floor(sampleRate / maxFreq);
+    const maxPeriod = Math.floor(sampleRate / minFreq);
+
+    let bestPeriod = 0;
+    let minDifference = Infinity;
+
+    for (let period = minPeriod; period <= maxPeriod; period++) {
+      let totalDifference = 0;
+      for (let i = 0; i < buffer.length - period; i++) {
+        totalDifference += Math.abs(buffer[i] - buffer[i + period]);
+      }
+
+      if (totalDifference < minDifference) {
+        minDifference = totalDifference;
+        bestPeriod = period;
+      }
+    }
+
+    return bestPeriod > 0 ? sampleRate / bestPeriod : 0;
   }
 }

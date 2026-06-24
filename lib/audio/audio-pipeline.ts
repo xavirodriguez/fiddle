@@ -1,12 +1,10 @@
-import { type Observable,Subject } from 'rxjs'
-import { filter, map,share, tap } from 'rxjs/operators'
+import { type Observable, Subject } from 'rxjs'
+import { filter, map, share, tap } from 'rxjs/operators'
 import { createActor } from 'xstate'
 
-import { type PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
-import { Cents,type Hertz } from '../domain/musical-domain'
-import { PitchDetectionResult } from '../pitch-detector'
-import { noteSegmenterMachine } from '../practice/note-segmenter-machine'
-import { TechniqueAgent } from '../practice/technique-agent'
+import { type Cents, type PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
+import { type Hertz } from '../domain/musical-domain'
+import { noteSegmenterMachine } from '../practice/note-segmenter'
 import { MusicalNote } from '../practice-core'
 
 /**
@@ -32,7 +30,6 @@ export interface RawPitchEvent {
 export class AudioPipeline {
   private inputSubject = new Subject<RawPitchEvent>()
   private segmenter = createActor(noteSegmenterMachine)
-  private techniqueAgent = new TechniqueAgent()
 
   /**
    * The processed stream of valid pitch frames.
@@ -68,6 +65,14 @@ export class AudioPipeline {
         SHARED_PITCH_FRAME.frequency = event.pitchHz as Hertz
         SHARED_PITCH_FRAME.confidence = event.confidence
         SHARED_PITCH_FRAME.timestamp = event.timestamp
+
+        if (event.pitchHz > 0) {
+          const note = MusicalNote.fromFrequencyShared(event.pitchHz)
+          SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
+        } else {
+          SHARED_PITCH_FRAME.centsDeviation = 0 as Cents
+        }
+
         return SHARED_PITCH_FRAME
       }),
 
