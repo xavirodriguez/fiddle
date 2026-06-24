@@ -1,7 +1,7 @@
 import { firstValueFrom } from 'rxjs'
 import { beforeEach,describe, expect, it, vi } from 'vitest'
 
-import { AudioPipeline, type RawPitchEvent } from './audio-pipeline'
+import { AudioPipeline } from './audio-pipeline'
 
 describe('AudioPipeline', () => {
   let pipeline: AudioPipeline;

@@ -16,3 +16,7 @@
 | 6.2 | Integración de Manejo Funcional de Errores e Inmutabilidad | ~100 |
 | 6.3 | Pipeline Reactivo y Máquinas de Estado | ~150 |
 | 6.4 | Análisis Estadístico y Extracción de Features | ~200 |
+| 2.2 | BiquadFilterNode adaptativo + DynamicsCompressorNode | ~15 |
+| 2.3 | PitchWorker.ts con Transferable Objects + AMDF + Noise Gate | ~40 |
+| 3.2 | Generador de señales sintéticas de prueba (test de octava) | ~25 |
+| 6.3 | Consolidación de NoteSegmenter (XState v5) | ~100 |

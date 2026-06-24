@@ -25,3 +25,18 @@
 ### Changed
 - **PracticeService:** Refactored to use `AudioPipeline` instead of manual RAF loop.
 - **Project Metadata:** Cleaned up `.ai/tasks/DONE.md` and consolidated project rules in `.ai/agents/RULES.md`.
+
+## [CURRENT]
+
+### Added
+- Implementación de AMDF (Average Magnitude Difference Function) en `PitchDetector` para mitigar errores de octava en el violín (Tarea 2.3).
+- Método `setFilterFrequency` en `AudioManager` para filtros adaptativos durante la práctica (Tarea 2.2).
+- Test de integración de señal sintética para validar detección de fundamental con armónicos fuertes (Tarea 3.2).
+
+### Changed
+- Consolidación de `NoteSegmenter` utilizando XState v5 `setup`, eliminando redundancias y mejorando el debouncing (Tarea 6.3).
+
+### Fixed
+- Corrección de bug en el contador de frames de `NoteSegmenter`.
+- Mejora de rendimiento moviendo el procesamiento pesado DSP después de la puerta de ruido (Noise Gate).
+- Corrección de importaciones y tipos en `FixedRingBuffer` y `AudioPipeline`.

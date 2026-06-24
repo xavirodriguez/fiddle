@@ -67,6 +67,20 @@ class AudioManager {
   }
 
   /**
+   * Updates the filter frequency based on the current musical range.
+   * For violin, this usually ranges from 196Hz (G3) to ~3500Hz.
+   *
+   * @param frequency - New cutoff frequency in Hz.
+   */
+  setFilterFrequency(frequency: number): void {
+    if (this.filter) {
+      // Smooth transition to avoid audible clicks
+      const now = this.context?.currentTime ?? 0;
+      this.filter.frequency.setTargetAtTime(frequency, now, 0.1);
+    }
+  }
+
+  /**
    * Suspends the AudioContext to conserve resources while not in use.
    */
   async suspend(): Promise<void> {

@@ -1,11 +1,10 @@
-import { type Observable,Subject } from 'rxjs'
-import { filter, map,share, tap } from 'rxjs/operators'
+import { type Observable, Subject } from 'rxjs'
+import { filter, map, share, tap } from 'rxjs/operators'
 import { createActor } from 'xstate'
 
 import { type PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
-import { Cents,type Hertz } from '../domain/musical-domain'
-import { PitchDetectionResult } from '../pitch-detector'
-import { noteSegmenterMachine } from '../practice/note-segmenter-machine'
+import { type Cents, type Hertz } from '../domain/musical-domain'
+import { noteSegmenterMachine } from '../practice/note-segmenter'
 import { TechniqueAgent } from '../practice/technique-agent'
 import { MusicalNote } from '../practice-core'
 
