@@ -1,4 +1,4 @@
-import { Subject, Observable, pipe } from 'rxjs'
+import { Subject, Observable } from 'rxjs'
 import { filter, tap, share, map } from 'rxjs/operators'
 import { PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
 import { PitchDetectionResult } from '../pitch-detector'
@@ -64,23 +64,14 @@ export class AudioPipeline {
 
       // 3. Zero-allocation mapping (mutating shared object)
       map(event => {
-        // Calculate cents deviation correctly using domain logic
-        const note = MusicalNote.fromFrequencyShared(event.pitchHz)
-
         SHARED_PITCH_FRAME.frequency = event.pitchHz as Hertz
         SHARED_PITCH_FRAME.confidence = event.confidence
         SHARED_PITCH_FRAME.timestamp = event.timestamp
-        SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
-
-        // 4. Technique Analysis (returns SHARED_TECHNIQUE_METRICS)
-        const metrics = this.techniqueAgent.analyze(SHARED_PITCH_FRAME as PitchFrame, event.rms)
-        SHARED_PITCH_FRAME.technique = metrics ?? undefined
-
         return SHARED_PITCH_FRAME as PitchFrame
       }),
 
       share()
-    );
+    )
   }
 
   /**
