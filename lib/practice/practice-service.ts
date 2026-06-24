@@ -1,6 +1,6 @@
 import { audioManager } from '../infrastructure/audio-manager'
 import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
-import { PitchDetector, PitchDetectionResult } from '../pitch-detector'
+import { PitchDetector } from '../pitch-detector'
 import { usePracticeStore } from '@/stores/practice-store'
 import { useTunerStore } from '@/stores/tuner-store'
 import { MusicalNote, formatPitchName } from '../practice-core'
@@ -15,9 +15,6 @@ import { ToneBridge, Seconds } from '../audio/tone-bridge'
 import { audioPipeline, RawPitchEvent } from '../audio/audio-pipeline'
 import { Subscription } from 'rxjs'
 import * as Tone from 'tone'
-import { AudioPipeline } from '../audio/audio-pipeline'
-import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
-import { Subscription } from 'rxjs'
 
 /**
  * PracticeService
@@ -104,7 +101,6 @@ export class PracticeService {
     const now = frame.timestamp as Seconds
     const store = usePracticeStore.getState()
     const tuner = useTunerStore.getState()
-    const now = frame.timestamp
     const shouldUpdateStore = now - this.lastUpdateTime > this.UPDATE_INTERVAL_SEC
 
     tuner.updatePitch(frame.frequency, frame.confidence)

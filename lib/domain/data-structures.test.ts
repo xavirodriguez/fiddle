@@ -70,7 +70,7 @@ describe('FixedRingBuffer', () => {
   })
 
   it('should handle push with multiple elements by pushing them one by one', () => {
-    const buffer = new FixedRingBuffer<number, 3>(3)
+    const buffer = new FixedRingBuffer<number>(3)
     buffer.push(1)
     buffer.push(2)
     buffer.push(3)

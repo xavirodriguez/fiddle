@@ -48,7 +48,7 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
  * 3. Cache-Friendly: Iteration via forEach avoids array copies.
  */
 export class FixedRingBuffer<T> {
-  private readonly buffer: T[];
+  private readonly buffer: (T | undefined)[];
   private head: number = 0;
   private size: number = 0;
 
@@ -57,7 +57,11 @@ export class FixedRingBuffer<T> {
   }
 
   push(item: T): void {
-    this.buffer.push(item)
+    this.buffer[this.head] = item;
+    this.head = (this.head + 1) % this.maxSize;
+    if (this.size < this.maxSize) {
+      this.size++;
+    }
   }
 
   /**
@@ -70,7 +74,10 @@ export class FixedRingBuffer<T> {
     for (let i = 0; i < this.size; i++) {
       // Calculate index from newest to oldest
       const index = (this.head - 1 - i + this.maxSize) % this.maxSize;
-      callback(this.buffer[index], i);
+      const item = this.buffer[index];
+      if (item !== undefined) {
+        callback(item, i);
+      }
     }
   }
 

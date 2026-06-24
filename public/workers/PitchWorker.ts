@@ -75,7 +75,7 @@ self.onmessage = (event: MessageEvent<WorkerInput>) => {
   // Enviar resultado de vuelta
   // Se devuelve el buffer como Transferable para mantener la política de Zero-Allocation
   // permitiendo que el hilo principal lo reutilice sin nuevas asignaciones.
-  self.postMessage({
+  (self as any).postMessage({
     result: {
       frequency,
       confidence,
