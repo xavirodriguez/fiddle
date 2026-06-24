@@ -1,3 +1,5 @@
+import { Result } from 'neverthrow'
+import { AppError } from '../errors/app-error'
 import { PitchFrame } from '../domain/data-structures'
 
 /**
@@ -12,13 +14,13 @@ export interface AudioCapturePort {
   /**
    * Initializes the audio context and requests microphone permissions.
    */
-  initialize(): Promise<void>
+  initialize(): Promise<Result<void, AppError>>
 
   /**
    * Starts capturing audio and streaming it to the processing pipeline.
    * @param onFrame Callback for each captured audio buffer.
    */
-  startStream(onFrame: (frame: Float32Array) => void): Promise<void>
+  startStream(onFrame: (frame: Float32Array) => void): Promise<Result<void, AppError>>
 
   /**
    * Stops the current audio stream and releases hardware resources.

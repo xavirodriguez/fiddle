@@ -30,7 +30,7 @@ import { produce, castDraft } from 'immer'
 import { FixedRingBuffer } from './domain/data-structures'
 
 // Ring buffer for detection history to avoid allocations in the reducer.
-const DETECTION_HISTORY_BUFFER = new FixedRingBuffer<DetectedNote, 10>(10)
+const DETECTION_HISTORY_BUFFER = new FixedRingBuffer<DetectedNote>(10)
 
 export type {
   TargetNote,

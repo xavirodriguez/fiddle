@@ -53,14 +53,20 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
  * 3. Cache-Friendly: Uses native Mnemonist iteration.
  */
 export class FixedRingBuffer<T> {
-  private readonly buffer: CircularBuffer<T>;
+  private readonly buffer: (T | undefined)[];
+  private head: number = 0;
+  private size: number = 0;
 
   constructor(public readonly maxSize: number) {
     this.buffer = new CircularBuffer(Array, maxSize);
   }
 
   push(item: T): void {
-    this.buffer.push(item);
+    this.buffer[this.head] = item;
+    this.head = (this.head + 1) % this.maxSize;
+    if (this.size < this.maxSize) {
+      this.size++;
+    }
   }
 
   /**
@@ -70,13 +76,12 @@ export class FixedRingBuffer<T> {
    * Our domain requires newest to oldest.
    */
   forEach(callback: (item: T, index: number) => void): void {
-    if (this.buffer.size === 0) return;
-    for (let i = 0; i < this.buffer.size; i++) {
-      // Mnemonist doesn't have a direct "newest to oldest" iterator,
-      // so we calculate the index manually.
-      // CircularBuffer.get(0) is the OLDEST item.
-      // CircularBuffer.get(size - 1) is the NEWEST item.
-      const item = this.buffer.get(this.buffer.size - 1 - i);
+    if (this.size === 0) return;
+
+    for (let i = 0; i < this.size; i++) {
+      // Calculate index from newest to oldest
+      const index = (this.head - 1 - i + this.maxSize) % this.maxSize;
+      const item = this.buffer[index];
       if (item !== undefined) {
         callback(item, i);
       }
