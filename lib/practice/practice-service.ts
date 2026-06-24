@@ -13,6 +13,7 @@ import { type Cents, frequencyToMidi,type Hertz, lerp } from '../domain/musical-
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
 import { audioManager } from '../infrastructure/audio-manager'
+import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
 import { PitchDetector } from '../pitch-detector'
 import { formatPitchName,MusicalNote } from '../practice-core'
 import { type PracticeEvent,practiceMachine } from './practice-machine'
@@ -89,7 +90,7 @@ export class PracticeService {
   async start() {
     this.actor.start()
 
-    // Start Tone Transport
+    // Start Tone Transport via Bridge initialization (already done in initialize)
     await Tone.start()
     Tone.getTransport().start()
 
@@ -97,6 +98,9 @@ export class PracticeService {
     await this.audioAdapter.startStream((result: any) => {
       audioPipeline.push(result as RawPitchEvent)
     })
+
+    // Start Metronome if needed (example: 120 BPM)
+    // toneAudioPlayer.startMetronome(120);
 
     // Schedule musical events in Tone.js Transport
     this.synchronizer.schedule((event) => {
@@ -107,8 +111,7 @@ export class PracticeService {
   stop() {
     this.actor.stop()
     this.audioAdapter.stopStream()
-    Tone.getTransport().stop()
-    Tone.getTransport().cancel() // Clear scheduled events
+    toneAudioPlayer.stopAll()
   }
 
   private processFrame(frame: PitchFrame) {
