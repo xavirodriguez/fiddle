@@ -3,6 +3,7 @@ import { describe, expect,it } from 'vitest'
 import { AppError } from '../errors/app-error'
 import {
   frequencyToMidi,
+  frequencyToMidiRaw,
   type Hertz,
   makeCents,
   makeHertz,
@@ -65,6 +66,11 @@ describe('Musical Domain Nominal Types', () => {
       if (result.isOk()) {
         expect(result.value).toBe(69)
       }
+    })
+
+    it('should convert 440Hz to MIDI 69 using frequencyToMidiRaw (zero-allocation)', () => {
+      const result = frequencyToMidiRaw(440 as Hertz)
+      expect(result).toBe(69)
     })
 
     it('should return error for values out of range', () => {

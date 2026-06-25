@@ -9,7 +9,7 @@ import { audioPipeline, type RawPitchEvent } from '../audio/audio-pipeline'
 import { type Seconds,ToneBridge } from '../audio/tone-bridge'
 import { type MutablePitchFrame, type PitchFrame,SHARED_PITCH_FRAME } from '../domain/data-structures'
 import { type Exercise,type Note as TargetNote } from '../domain/exercise'
-import { type Cents, frequencyToMidi,type Hertz, lerp } from '../domain/musical-domain'
+import { type Cents, frequencyToMidiRaw,type Hertz, lerp } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
 import { audioManager } from '../infrastructure/audio-manager'
@@ -124,8 +124,7 @@ export class PracticeService {
     tuner.updatePitch(frame.frequency, frame.confidence)
 
     // 2. Real-time sync verification (O(1) Zero-Allocation)
-    const midiResult = frequencyToMidi(frame.frequency)
-    const detectedMidi = midiResult.isOk() ? midiResult.value : 0
+    const detectedMidi = frequencyToMidiRaw(frame.frequency)
     const verification = this.synchronizer.verify(now, detectedMidi)
 
     // 3. Update Sync State (Only on discrete changes to maintain 60 FPS)

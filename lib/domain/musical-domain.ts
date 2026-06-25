@@ -102,8 +102,22 @@ export function frequencyToMidi(
     }));
   }
 
-  const midiValue = 12 * Math.log2(frequency / config.a4Frequency) + 69;
-  return makeMidiNote(midiValue);
+  return makeMidiNote(frequencyToMidiRaw(frequency, config));
+}
+
+/**
+ * Zero-allocation version of frequencyToMidi for performance-critical loops.
+ *
+ * DESIGN DECISIONS:
+ * 1. No Result/Option wrappers to avoid object instantiation at 60 FPS.
+ * 2. Directly uses math primitives for maximum CPU throughput.
+ * 3. Assumes valid input (frequency > 0) to bypass check overhead.
+ */
+export function frequencyToMidiRaw(
+  frequency: Hertz,
+  config: TuningConfig = DEFAULT_TUNING
+): MidiNote {
+  return (12 * Math.log2(frequency / config.a4Frequency) + 69) as MidiNote;
 }
 
 /**
@@ -140,6 +154,13 @@ const ACCIDENTAL_MAP: Record<string, CanonicalAccidental> = {
   'natural': 0,
   '': 0,
 };
+
+/**
+ * Linear interpolation between two values.
+ */
+export function lerp(start: number, end: number, t: number): number {
+  return start + (end - start) * t;
+}
 
 export function normalizeAccidental(
   input: number | string | undefined

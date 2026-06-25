@@ -6,12 +6,17 @@
  *
  * Design Decisions:
  * 1. Single Source of Truth: All audio operations use the native context
- *    from AudioManager.
+ *    from AudioManager. This ensures that the metronome, accompaniment,
+ *    and DSP pipeline (pitch detection) all reference the exact same
+ *    hardware clock, eliminating drift over time.
  * 2. Nominal Typing: Branded types for Seconds and BPM to prevent
- *    mathematical errors in scheduling.
- * 3. Idempotency: Tone.setContext is only called once or when the
- *    context changes to avoid re-initialization overhead.
- * 4. Error Handling: Uses neverthrow to manage initialization results.
+ *    mathematical errors in scheduling (e.g., adding BPM to Seconds).
+ * 3. Idempotency: Tone.setContext and Tone.getTransport().context assignment
+ *    are protected to avoid redundant re-initialization which can cause
+ *    audible glitches or scheduling resets.
+ * 4. Functional Error Handling: Uses `neverthrow` to manage initialization
+ *    results, forcing callers to explicitly handle cases where hardware
+ *    initialization might fail (e.g., user denied microphone access).
  */
 
 import { err,ok, type Result } from 'neverthrow'

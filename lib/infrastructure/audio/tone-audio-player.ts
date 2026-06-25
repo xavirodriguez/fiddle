@@ -9,11 +9,14 @@ import { type AudioPlayerPort } from '../../ports/audio-player.port'
  * Implements AudioPlayerPort using Tone.js for high-precision musical timing.
  */
 export class ToneAudioPlayer implements AudioPlayerPort {
-  private synth: Tone.PolySynth
+  private _synth: Tone.PolySynth | null = null
   private clickLoop: Tone.Loop | null = null
 
-  constructor() {
-    this.synth = new Tone.PolySynth(Tone.Synth).toDestination()
+  private get synth(): Tone.PolySynth {
+    if (!this._synth) {
+      this._synth = new Tone.PolySynth(Tone.Synth).toDestination()
+    }
+    return this._synth
   }
 
   async playNote(frequency: number, durationMs: number, volume = 0.5): Promise<void> {
@@ -61,14 +64,16 @@ export class ToneAudioPlayer implements AudioPlayerPort {
   }
 
   stopAll(): void {
-    this.synth.releaseAll()
+    if (this._synth) {
+      this._synth.releaseAll()
+    }
     this.stopMetronome()
     Tone.getTransport().cancel()
   }
 
   async cleanup(): Promise<void> {
     this.stopAll()
-    this.synth.dispose()
+    this._synth?.dispose()
     this.clickLoop?.dispose()
   }
 

@@ -87,6 +87,16 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
 
     /**
      * Expose imperative API to parents.
+     *
+     * DESIGN DECISIONS & PERFORMANCE:
+     * 1. React Reconciliation Bypass: Calling these methods directly from the
+     *    practice service (DSP/Scheduler) allows for 60 FPS visual updates
+     *    without triggering React's Virtual DOM diffing. This is critical for
+     *    maintaining a stable frame rate.
+     * 2. Layout Reflow Prevention: OSMD cursor movements are optimized to
+     *    avoid full browser layout recalculations where possible. By using
+     *    an imperative bridge, we prevent React from unintentionally triggering
+     *    unnecessary style/layout updates on the container.
      */
     useImperativeHandle(ref, () => ({
       async loadScore(musicXml: string) {
