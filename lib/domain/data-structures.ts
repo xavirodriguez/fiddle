@@ -1,3 +1,5 @@
+import { type TechniqueMetrics } from '../technique-types';
+
 import { type Cents,type Hertz } from './musical-domain';
 
 /**
@@ -15,6 +17,7 @@ export interface PitchFrame {
   readonly centsDeviation: Cents;
   readonly confidence: number;
   readonly timestamp: number; // Linked to AudioContext.currentTime
+  readonly technique?: TechniqueMetrics;
 }
 
 /**
@@ -26,6 +29,7 @@ export interface MutablePitchFrame {
   centsDeviation: Cents;
   confidence: number;
   timestamp: number;
+  technique?: TechniqueMetrics;
 }
 
 /**

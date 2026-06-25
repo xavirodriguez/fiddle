@@ -22,15 +22,16 @@ export type PracticeEvent =
 export const practiceMachine = createMachine({
   id: 'practice',
   initial: 'idle',
-  types: {},
+  types: {
+    context: {} as PracticeContext,
+  },
   context: ({ input }: { input?: Partial<PracticeContext> }) => ({
-    targetMidi: 0,
-    toleranceCents: 15,
-    requiredHoldTime: 1.0,
-    currentHoldTime: 0,
-    lastTimestamp: 0,
-    errorCount: 0,
-    ...input,
+    targetMidi: input?.targetMidi ?? 0,
+    toleranceCents: input?.toleranceCents ?? 15,
+    requiredHoldTime: input?.requiredHoldTime ?? 1.0,
+    currentHoldTime: input?.currentHoldTime ?? 0,
+    lastTimestamp: input?.lastTimestamp ?? 0,
+    errorCount: input?.errorCount ?? 0,
   }),
   on: {
     SET_TARGET: {

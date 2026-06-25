@@ -21,27 +21,27 @@ describe('TechniqueAgent', () => {
 
   it('should return null until the window is full', () => {
     for (let i = 0; i < WINDOW_SIZE - 1; i++) {
-      expect(agent.analyze(createFrame(0), 0.1)).toBeNull();
+      expect(agent.analyze(createFrame(0), 0.1, 0, 0)).toBeNull();
     }
-    expect(agent.analyze(createFrame(0), 0.1)).not.toBeNull();
+    expect(agent.analyze(createFrame(0), 0.1, 0, 0)).not.toBeNull();
   });
 
   it('should calculate stability correctly for a stable note', () => {
     for (let i = 0; i < WINDOW_SIZE - 1; i++) {
-      agent.analyze(createFrame(2), 0.1);
+      agent.analyze(createFrame(2), 0.1, 0, 0);
     }
-    const metrics = agent.analyze(createFrame(2), 0.1);
+    const metrics = agent.analyze(createFrame(2), 0.1, 0, 0);
     expect(metrics?.isStable).toBe(true);
     expect(metrics?.pitchStdDev).toBe(0);
     expect(metrics?.pitchTrend).toBe(0);
   });
 
   it('should detect instability', () => {
-    agent.analyze(createFrame(0), 0.1);
-    agent.analyze(createFrame(20), 0.1);
-    agent.analyze(createFrame(-20), 0.1);
-    agent.analyze(createFrame(40), 0.1);
-    const metrics = agent.analyze(createFrame(-40), 0.1);
+    agent.analyze(createFrame(0), 0.1, 0, 0);
+    agent.analyze(createFrame(20), 0.1, 0, 0);
+    agent.analyze(createFrame(-20), 0.1, 0, 0);
+    agent.analyze(createFrame(40), 0.1, 0, 0);
+    const metrics = agent.analyze(createFrame(-40), 0.1, 0, 0);
 
     expect(metrics?.isStable).toBe(false);
     expect(metrics?.pitchStdDev).toBeGreaterThan(15);
@@ -49,11 +49,11 @@ describe('TechniqueAgent', () => {
 
   it('should calculate linear trend (slope)', () => {
     // Upward trend: 0, 2, 4, 6, 8 cents
-    agent.analyze(createFrame(0), 0.1);
-    agent.analyze(createFrame(2), 0.1);
-    agent.analyze(createFrame(4), 0.1);
-    agent.analyze(createFrame(6), 0.1);
-    const metrics = agent.analyze(createFrame(8), 0.1);
+    agent.analyze(createFrame(0), 0.1, 0, 0);
+    agent.analyze(createFrame(2), 0.1, 0, 0);
+    agent.analyze(createFrame(4), 0.1, 0, 0);
+    agent.analyze(createFrame(6), 0.1, 0, 0);
+    const metrics = agent.analyze(createFrame(8), 0.1, 0, 0);
 
     expect(metrics?.pitchTrend).toBeCloseTo(2); // 2 cents per frame
   });
@@ -61,17 +61,17 @@ describe('TechniqueAgent', () => {
   it('should calculate RMS stability', () => {
     // Constant volume
     for (let i = 0; i < WINDOW_SIZE - 1; i++) {
-      agent.analyze(createFrame(0), 0.5);
+      agent.analyze(createFrame(0), 0.5, 0, 0);
     }
-    let metrics = agent.analyze(createFrame(0), 0.5);
+    let metrics = agent.analyze(createFrame(0), 0.5, 0, 0);
     expect(metrics?.rmsStability).toBe(1);
 
     // Fluctuating volume
-    agent.analyze(createFrame(0), 0.1);
-    agent.analyze(createFrame(0), 0.9);
-    agent.analyze(createFrame(0), 0.1);
-    agent.analyze(createFrame(0), 0.9);
-    metrics = agent.analyze(createFrame(0), 0.1);
+    agent.analyze(createFrame(0), 0.1, 0, 0);
+    agent.analyze(createFrame(0), 0.9, 0, 0);
+    agent.analyze(createFrame(0), 0.1, 0, 0);
+    agent.analyze(createFrame(0), 0.9, 0, 0);
+    metrics = agent.analyze(createFrame(0), 0.1, 0, 0);
     expect(metrics?.rmsStability).toBeLessThan(1);
   });
 });

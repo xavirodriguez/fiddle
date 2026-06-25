@@ -65,6 +65,7 @@ export interface PracticeSlice {
   jumpToNote: (index: number) => void
   nextNote: () => void
   prevNote: () => void
+  setPracticeState: (state: Partial<PracticeState>) => void
 }
 
 export const createPracticeSlice: StateCreator<PracticeSlice> = (set, get) => ({
@@ -109,5 +110,11 @@ export const createPracticeSlice: StateCreator<PracticeSlice> = (set, get) => ({
   prevNote() {
     const { currentIndex } = get().practiceState
     get().jumpToNote(Math.max(currentIndex - 1, 0))
+  },
+
+  setPracticeState(newState) {
+    set((state) => ({
+      practiceState: { ...state.practiceState, ...newState },
+    }))
   },
 })
