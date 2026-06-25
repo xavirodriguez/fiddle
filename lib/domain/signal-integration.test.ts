@@ -14,7 +14,7 @@ describe('Signal Math Verification (Violin Octave Stress Test)', () => {
     // We only need the first 2048 samples
     const slice = buffer.slice(0, 2048);
 
-    const result = detector.detectPitchWithValidation(slice, 0.01);
+    const result = detector.detect(slice);
 
     // Tolerance for floating point and algorithm approximation
     expect(result.pitchHz).toBeGreaterThan(fundamentalHz * 0.95);
@@ -29,7 +29,7 @@ describe('Signal Math Verification (Violin Octave Stress Test)', () => {
       buffer[i] = Math.sin(2 * Math.PI * freq * (i / sampleRate));
     }
 
-    const result = detector.detectPitchWithValidation(buffer, 0.01);
+    const result = detector.detect(buffer);
     expect(result.pitchHz).toBeGreaterThan(freq * 0.98);
     expect(result.pitchHz).toBeLessThan(freq * 1.02);
     expect(result.confidence).toBeGreaterThan(0.9);

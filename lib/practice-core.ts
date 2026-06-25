@@ -289,11 +289,21 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
         break
       }
       case 'NOTE_DETECTED': {
-        const payload = (event).payload
+        const payload = event.payload
 
-        // Use pre-allocated RingBuffer to avoid allocations in hot-path
+        // Zero-Allocation in-place update of detection history using pre-allocated RingBuffer
         DETECTION_HISTORY_BUFFER.push(payload)
-        draft.detectionHistory = castDraft(DETECTION_HISTORY_BUFFER.toArray())
+
+        // Update the draft array in-place to avoid re-allocation
+        if (!draft.detectionHistory) {
+          draft.detectionHistory = []
+        }
+
+        const currentBuffer = DETECTION_HISTORY_BUFFER.toArray()
+        draft.detectionHistory.length = currentBuffer.length
+        for (let i = 0; i < currentBuffer.length; i++) {
+          draft.detectionHistory[i] = castDraft(currentBuffer[i])
+        }
 
         if (draft.status === 'correct') {
           draft.status = 'listening'
@@ -411,7 +421,7 @@ function evaluateDrillTarget(
     completedRepetitions = 0 // Reset on failure for "consecutive" logic
   }
 
-  const isLoopCompleted = completedRepetitions >= 3 // Hardcoded to 3 as per requirement
+  const isLoopCompleted = completedRepetitions >= 3
 
   return {
     drillTarget: {
