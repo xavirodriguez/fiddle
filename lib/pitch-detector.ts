@@ -3,6 +3,7 @@
  *
  * Wraps the `pitchy` and `meyda` libraries to provide pitch detection and
  * spectral analysis from a Float32Array buffer.
+ * Optimized for high-frequency use with zero-allocation in the hot path.
  */
 import Meyda from 'meyda'
 import { PitchDetector as PitchyDetector } from 'pitchy'
@@ -37,6 +38,7 @@ export const SHARED_DETECTION_RESULT: PitchDetectionResult = {
 
 /**
  * Detects pitch and spectral features from a PCM audio buffer.
+ * Acts as a pure adapter for `pitchy` and `meyda` libraries.
  */
 export class PitchDetector {
   private detector: PitchyDetector<Float32Array>
@@ -56,20 +58,12 @@ export class PitchDetector {
 
   /**
    * Helper to ensure buffer is a power of 2 for Meyda.
-   * If not, it returns a slice or zero-padded version.
-   * But for performance, we should ideally pass a power-of-2 buffer.
    */
   private getPowerOfTwoBuffer(buffer: Float32Array): Float32Array {
     const n = buffer.length
     if ((n & (n - 1)) === 0 && n !== 0) {
       return buffer
     }
-    // Find next power of two
-    let po2 = 1
-    while (po2 < n) po2 <<= 1
-    // If n is not power of 2, we take the largest power of 2 that is LESS than n
-    // to avoid allocation of a larger buffer if possible,
-    // or just use the constructor's bufferSize if it was intended to be power of 2.
     const lowerPo2 = 1 << (Math.floor(Math.log2(n)))
     return buffer.subarray(0, lowerPo2)
   }
@@ -96,61 +90,11 @@ export class PitchDetector {
       const result = this.detector.findPitch(buffer, this.sampleRate);
       dr.pitchHz = result[0] ?? 0;
       dr.confidence = result[1] ?? 0;
-
-      // AMDF refinement to handle octave doubling (common in violins)
-      const amdfPitch = this.detectAMDF(buffer, this.sampleRate);
-      if (amdfPitch > 0 && dr.pitchHz > amdfPitch * 1.8 && dr.pitchHz < amdfPitch * 2.2) {
-        dr.pitchHz = amdfPitch;
-      }
     } else {
       dr.pitchHz = 0;
       dr.confidence = 0;
     }
 
     return dr;
-  }
-
-  /**
-   * Detects pitch with an RMS noise gate.
-   * @deprecated Use detect() directly as it now includes an internal noise gate.
-   */
-  detectPitchWithValidation(
-    buffer: Float32Array,
-    rmsThreshold = 0.01,
-  ): PitchDetectionResult {
-    const dr = this.detect(buffer);
-    if (dr.rms < rmsThreshold) {
-      dr.pitchHz = 0;
-      dr.confidence = 0;
-    }
-    return dr;
-  }
-
-  /**
-   * Simple Average Magnitude Difference Function (AMDF)
-   * Good for finding the fundamental period when harmonics are strong.
-   */
-  private detectAMDF(buffer: Float32Array, sampleRate: number): number {
-    const minFreq = 150; // Below Violin G3 (196Hz)
-    const maxFreq = 3000;
-    const minPeriod = Math.floor(sampleRate / maxFreq);
-    const maxPeriod = Math.floor(sampleRate / minFreq);
-
-    let bestPeriod = 0;
-    let minDifference = Infinity;
-
-    for (let period = minPeriod; period <= maxPeriod; period++) {
-      let totalDifference = 0;
-      for (let i = 0; i < buffer.length - period; i++) {
-        totalDifference += Math.abs(buffer[i] - buffer[i + period]);
-      }
-
-      if (totalDifference < minDifference) {
-        minDifference = totalDifference;
-        bestPeriod = period;
-      }
-    }
-
-    return bestPeriod > 0 ? sampleRate / bestPeriod : 0;
   }
 }

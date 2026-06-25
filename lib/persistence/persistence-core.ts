@@ -10,10 +10,15 @@ export function serializeAndCompress(value: unknown): string {
   const compressedBuffer = pako.deflate(jsonString)
 
   // Avoid stack overflow from spread operator on large buffers
-  let binaryString = ''
-  for (let i = 0; i < compressedBuffer.length; i++) {
-    binaryString += String.fromCharCode(compressedBuffer[i])
+  // Using a chunked approach to avoid both stack overflow and slow per-character concatenation
+  const CHUNK_SIZE = 8192
+  const chunks: string[] = []
+  for (let i = 0; i < compressedBuffer.length; i += CHUNK_SIZE) {
+    const chunk = compressedBuffer.subarray(i, i + CHUNK_SIZE)
+    // We use a temporary array for apply to avoid spread operator syntax while still being efficient
+    chunks.push(String.fromCharCode.apply(null, chunk as unknown as number[]))
   }
+  const binaryString = chunks.join('')
 
   const base64String = btoa(binaryString)
   const result = base64String
@@ -108,9 +113,21 @@ export async function saveAsync(key: string, data: unknown): Promise<void> {
 }
 
 /**
- * Asynchronously loads data from local storage.
+ * Migrator function signature.
  */
-export async function loadAsync<T>(key: string, schema: z.ZodType<T>): Promise<T | null> {
+export type Migrator<T = any> = (data: any) => T
+
+/**
+ * Asynchronously loads data from local storage with versioning support.
+ */
+export async function loadAsync<T>(
+  key: string,
+  schema: z.ZodType<T>,
+  options?: {
+    version?: number
+    migrators?: Record<number, Migrator>
+  }
+): Promise<T | null> {
   return new Promise((resolve) => {
     setTimeout(() => {
       const val = localStorage.getItem(key)
@@ -119,8 +136,23 @@ export async function loadAsync<T>(key: string, schema: z.ZodType<T>): Promise<T
         return
       }
       try {
-        const decompressed = decompressAndDeserialize(val)
-        const validated = schema.parse(decompressed)
+        const decompressed = decompressAndDeserialize(val) as any
+        let data = decompressed
+
+        // Handle versioned migrations
+        const currentVersion = data?.__version ?? 0
+        const targetVersion = options?.version ?? 0
+
+        if (currentVersion < targetVersion && options?.migrators) {
+          console.log(`[Persist] Migrating ${key} from v${currentVersion} to v${targetVersion}`)
+          for (let v = currentVersion + 1; v <= targetVersion; v++) {
+            if (options.migrators[v]) {
+              data = options.migrators[v](data)
+            }
+          }
+        }
+
+        const validated = schema.parse(data)
         resolve(validated)
       } catch (error) {
         console.error(`[Persist] Error loading key "${key}":`, error)

@@ -27,9 +27,11 @@ export interface RawPitchEvent {
  *
  * Manages the reactive flow of pitch events using RxJS.
  * Optimized for Zero Allocation.
+ * Flow: RawPitchEvent -> NoteSegmenter -> Agent -> EventSink
  */
 export class AudioPipeline {
   private inputSubject = new Subject<RawPitchEvent>()
+  private eventSink = new Subject<PitchFrame>()
   private segmenter = createActor(noteSegmenterMachine)
   private techniqueAgent = new TechniqueAgent()
 
@@ -42,7 +44,8 @@ export class AudioPipeline {
   constructor() {
     this.segmenter.start()
 
-    this.pitchFrame$ = this.inputSubject.asObservable().pipe(
+    // Internal pipeline setup
+    this.inputSubject.asObservable().pipe(
       // 1. Note Segmentation (Update machine state)
       tap(event => {
         if (event.pitchHz > 0 && event.confidence > 0.8 && event.rms > 0.01) {
@@ -62,7 +65,7 @@ export class AudioPipeline {
         return state === 'NOTE' || state === 'NOTE_LOST'
       }),
 
-      // 3. Zero-allocation mapping (mutating shared object)
+      // 3. Agent Stage: Zero-allocation mapping & Technique Analysis
       map(event => {
         // Calculate Cents Deviation using MusicalNote core utility
         const note = MusicalNote.fromFrequencyShared(event.pitchHz);
@@ -73,14 +76,23 @@ export class AudioPipeline {
         SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
 
         // 4. Technique Analysis (Side effect: updates SHARED_TECHNIQUE_METRICS)
-        const metrics = this.techniqueAgent.analyze(SHARED_PITCH_FRAME, event.rms);
+        const metrics = this.techniqueAgent.analyze(
+          SHARED_PITCH_FRAME,
+          event.rms,
+          event.spectralFlatness,
+          event.spectralCentroid
+        );
         SHARED_PITCH_FRAME.technique = metrics ?? undefined;
 
         return SHARED_PITCH_FRAME
       }),
 
+      // 4. EventSink Stage: Final emission
+      tap(frame => this.eventSink.next(frame)),
       share()
-    )
+    ).subscribe();
+
+    this.pitchFrame$ = this.eventSink.asObservable();
   }
 
   /**
@@ -90,11 +102,17 @@ export class AudioPipeline {
     this.inputSubject.next(event)
   }
 
+  getTechniqueAgent(): TechniqueAgent {
+    return this.techniqueAgent
+  }
+
   /**
    * Cleanup resources
    */
   destroy(): void {
     this.segmenter.stop()
+    this.inputSubject.complete()
+    this.eventSink.complete()
   }
 }
 

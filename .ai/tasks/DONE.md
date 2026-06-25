@@ -20,3 +20,9 @@
 | 2.3 | PitchWorker.ts con Transferable Objects + AMDF + Noise Gate | ~40 |
 | 3.2 | Generador de señales sintéticas de prueba (test de octava) | ~25 |
 | 6.3 | Consolidación de NoteSegmenter (XState v5) | ~100 |
+| 6.5 | Consolidación de Zustand Stores + Tone.js Bridge | ~100 |
+| 7.1 | TechniqueAgent con Vibrato Rate y Timbre Analysis | ~50 |
+| 7.2 | Heurísticas de Timbre Avanzadas | ~20 |
+| 7.3 | Generador de Observaciones Musicales | ~20 |
+| 8.1 | Unificación de Stores y Persistencia Reactiva | ~50 |
+| 8.2 | Sistema de Versionado y Migración de Persistencia | ~30 |

@@ -1,4 +1,6 @@
-import { type Cents,type Hertz } from './musical-domain';
+import { type TechniqueMetrics } from '../technique-types';
+
+import { type Cents, type Hertz } from './musical-domain';
 
 /**
  * Violin-specific domain constants.
@@ -15,6 +17,7 @@ export interface PitchFrame {
   readonly centsDeviation: Cents;
   readonly confidence: number;
   readonly timestamp: number; // Linked to AudioContext.currentTime
+  readonly technique?: TechniqueMetrics;
 }
 
 /**
@@ -26,6 +29,7 @@ export interface MutablePitchFrame {
   centsDeviation: Cents;
   confidence: number;
   timestamp: number;
+  technique?: TechniqueMetrics;
 }
 
 /**
@@ -48,12 +52,12 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
  * 3. Cache-Friendly: Uses a simple circular index.
  */
 export class FixedRingBuffer<T> {
-  private readonly buffer: T[];
+  private readonly buffer: (T | undefined)[];
   private head = 0;
   private size = 0;
 
   constructor(public readonly maxSize: number) {
-    this.buffer = new Array(maxSize);
+    this.buffer = new Array(maxSize).fill(undefined);
   }
 
   /**
@@ -74,7 +78,6 @@ export class FixedRingBuffer<T> {
     if (this.size === 0) return;
 
     for (let i = 0; i < this.size; i++) {
-      // (this.head - 1 - i) can be negative, so we add maxSize to keep it positive.
       const index = (this.head - 1 - i + this.maxSize) % this.maxSize;
       const item = this.buffer[index];
       if (item !== undefined) {

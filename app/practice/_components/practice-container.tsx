@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react'
 
 import { audioManager } from '@/lib/infrastructure/audio-manager'
 import { practiceService } from '@/lib/practice/practice-service'
-import { usePracticeStore } from '@/stores/practice-store'
+import { useAppStore } from '@/stores/app-store'
 
 import { FeedbackOverlay } from './feedback-overlay'
 import { PracticeToolbar } from './practice-toolbar'
@@ -41,10 +41,10 @@ const ScoreViewer = dynamic(
 // ---------------------------------------------------------------------------
 
 export function PracticeContainer() {
-  const practiceState = usePracticeStore((s) => s.practiceState)
-  const nextNote = usePracticeStore((s) => s.nextNote)
-  const prevNote = usePracticeStore((s) => s.prevNote)
-  const internalUpdate = usePracticeStore((s) => s.internalUpdate)
+  const practiceState = useAppStore((s) => s.practiceState)
+  const nextNote = useAppStore((s) => s.nextNote)
+  const prevNote = useAppStore((s) => s.prevNote)
+  const internalUpdate = useAppStore((s) => s.internalUpdate)
   const scoreRef = useRef<ScoreViewerRef>(null)
 
   const isPlaying = practiceState.status !== 'idle' && practiceState.status !== 'completed'

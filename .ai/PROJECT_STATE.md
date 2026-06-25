@@ -1,21 +1,18 @@
-# PROJECT STATE - Violin Mentor
+# Project State - [2026-06-21]
 
-## Estado Actual
-El sistema se encuentra en la Fase 6 de modernización. Se han integrado exitosamente `mnemonist`, `simple-statistics`, `pitchy`, `meyda` y `rxjs`. El pipeline reactivo está operativo pero requiere ajustes de infraestructura para mejorar la precisión en violín.
+## Current Status
+- **Phase 6 Completed**: Core modernization with specialized libraries is complete. Stores are unified.
+- **Phase 7 Completed**: Technique analysis engine enhanced with vibrato, timbre analysis, and human-readable feedback.
+- **Phase 8 Completed**: Global state unified with versioned persistence and migration support.
 
-### Componentes Activos
-- **Dominio Musical:** Tipos branded y conversiones de hercios/MIDI/cents operativas.
-- **Análisis de Técnica:** `TechniqueAgent` con análisis estadístico en tiempo real (zero-allocation).
-- **Pipeline de Audio:** RxJS (`AudioPipeline`) orquestando el flujo desde el micrófono hasta el análisis de técnica.
-- **Segmentación de Notas:** Implementada con XState para debouncing de ataques y silencios.
-- **Detección de Pitch:** Basada en Web Workers con paso de mensajes por objetos transferibles.
+## Working Features
+- Reactive Audio Pipeline (RxJS + XState).
+- Pitch Detection with `pitchy` and `meyda`.
+- Unified Zustand store with versioned persistence middleware.
+- TechniqueAgent with stability, trend, vibrato (rate/depth), and timbre heuristics.
+- Automatic observation generation for matched notes.
+- Musical synchronization with Tone.js master clock.
 
-### Próximos Pasos Inmediatos
-1.  **Refactorización de Infraestructura**: Adaptar el `AudioManager` para filtros dinámicos.
-2.  **Optimización DSP**: Implementar AMDF para evitar errores de octava en el violín.
-3.  **Validación**: Ejecutar tests de estrés con señales sintéticas de violín.
-4.  **Modernización Final**: Integrar `tone.js` y consolidar el estado global.
-
-### Riesgos e Impedimentos
-- Redundancia detectada en la lógica de `NoteSegmenter` (dos máquinas de estado similares).
-- Necesidad de asegurar que el `AudioWorklet` o `Worker` maneje correctamente el `Noise Gate` antes de incurrir en costos de procesamiento.
+## Pending Work
+- Advanced AI-driven technique recommendations.
+- Global statistics dashboard.
