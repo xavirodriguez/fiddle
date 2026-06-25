@@ -1,4 +1,4 @@
-import { assign,createMachine } from 'xstate';
+import { assign, setup } from 'xstate';
 
 import { type PitchFrame } from '../domain/data-structures';
 import { frequencyToMidi } from '../domain/musical-domain';
@@ -19,11 +19,53 @@ export type PracticeEvent =
   | { type: 'PITCH_LOST' }
   | { type: 'SET_TARGET'; midi: number };
 
-export const practiceMachine = createMachine({
+export const practiceMachine = setup({
+  types: {
+    context: {} as PracticeContext,
+    events: {} as PracticeEvent,
+    input: {} as Partial<PracticeContext>,
+  },
+  guards: {
+    isCorrectPitch: ({ context, event }) => {
+      if (event.type !== 'PITCH_DETECTED') return false;
+      const result = frequencyToMidi(event.frame.frequency);
+      if (result.isErr()) return false;
+      const diff = Math.abs(result.value - context.targetMidi) * 100;
+      return diff <= context.toleranceCents;
+    },
+    isHoldComplete: ({ context, event }) => {
+      if (event.type !== 'PITCH_DETECTED') return false;
+      const delta = context.lastTimestamp > 0 ? event.frame.timestamp - context.lastTimestamp : 0;
+      return (context.currentHoldTime + delta) >= context.requiredHoldTime;
+    },
+  },
+  actions: {
+    assignTarget: assign({
+      targetMidi: ({ event }) => (event.type === 'SET_TARGET' ? event.midi : 0),
+    }),
+    updateTimestamp: assign({
+      lastTimestamp: ({ event }) => (event.type === 'PITCH_DETECTED' ? event.frame.timestamp : 0),
+    }),
+    incrementHoldTime: assign({
+      currentHoldTime: ({ context, event }) => {
+        if (event.type !== 'PITCH_DETECTED') return context.currentHoldTime;
+        const delta = context.lastTimestamp > 0 ? event.frame.timestamp - context.lastTimestamp : 0;
+        return context.currentHoldTime + delta;
+      },
+      lastTimestamp: ({ event }) => (event.type === 'PITCH_DETECTED' ? event.frame.timestamp : 0),
+    }),
+    clearHoldTime: assign({
+      currentHoldTime: 0,
+      lastTimestamp: 0,
+    }),
+    notifySuccess: () => {
+      // Logic provided via provide() or implementation
+    },
+  },
+}).createMachine({
   id: 'practice',
   initial: 'idle',
-  types: {},
-  context: ({ input }: { input?: Partial<PracticeContext> }) => ({
+  context: ({ input }) => ({
     targetMidi: 0,
     toleranceCents: 15,
     requiredHoldTime: 1.0,
@@ -98,44 +140,6 @@ export const practiceMachine = createMachine({
           actions: ['assignTarget', 'clearHoldTime'],
         },
       },
-    },
-  },
-}, {
-  guards: {
-    isCorrectPitch: ({ context, event }) => {
-      if (event.type !== 'PITCH_DETECTED') return false;
-      const result = frequencyToMidi(event.frame.frequency);
-      if (result.isErr()) return false;
-      const diff = Math.abs(result.value - context.targetMidi) * 100;
-      return diff <= context.toleranceCents;
-    },
-    isHoldComplete: ({ context, event }) => {
-      if (event.type !== 'PITCH_DETECTED') return false;
-      const delta = context.lastTimestamp > 0 ? event.frame.timestamp - context.lastTimestamp : 0;
-      return (context.currentHoldTime + delta) >= context.requiredHoldTime;
-    },
-  },
-  actions: {
-    assignTarget: assign({
-      targetMidi: ({ event }) => (event.type === 'SET_TARGET' ? event.midi : 0),
-    }),
-    updateTimestamp: assign({
-      lastTimestamp: ({ event }) => (event.type === 'PITCH_DETECTED' ? event.frame.timestamp : 0),
-    }),
-    incrementHoldTime: assign({
-      currentHoldTime: ({ context, event }) => {
-        if (event.type !== 'PITCH_DETECTED') return context.currentHoldTime;
-        const delta = context.lastTimestamp > 0 ? event.frame.timestamp - context.lastTimestamp : 0;
-        return context.currentHoldTime + delta;
-      },
-      lastTimestamp: ({ event }) => (event.type === 'PITCH_DETECTED' ? event.frame.timestamp : 0),
-    }),
-    clearHoldTime: assign({
-      currentHoldTime: 0,
-      lastTimestamp: 0,
-    }),
-    notifySuccess: () => {
-      // Inlined in PracticeService.actor definition
     },
   },
 });

@@ -45,15 +45,15 @@ export class TechniqueAgent {
   private readonly rmsBuffer: CircularBuffer<number>;
 
   // Pre-allocated arrays for Simple-Statistics compatibility without per-frame allocation
-  private readonly centsArray: Float64Array;
-  private readonly rmsArray: Float64Array;
+  private readonly centsArray: number[];
+  private readonly rmsArray: number[];
 
   constructor(windowSize = 30) {
     this.windowSize = windowSize;
     this.centsBuffer = new CircularBuffer(Float64Array, windowSize);
-    this.rmsBuffer = new CircularBuffer(Float64Array, windowSize);
-    this.centsArray = new Float64Array(windowSize);
-    this.rmsArray = new Float64Array(windowSize);
+    this.rmsBuffer = new CircularBuffer(Float32Array, windowSize);
+    this.centsArray = new Array(windowSize);
+    this.rmsArray = new Array(windowSize);
   }
 
   /**
@@ -68,8 +68,7 @@ export class TechniqueAgent {
       return null;
     }
 
-    // Copy to pre-allocated typed arrays for ss performance
-    // CircularBuffer iterates from oldest to newest, which is what we need for trend.
+    // Copy to pre-allocated arrays for ss compatibility
     this.centsBuffer.forEach((val, i) => {
       this.centsArray[i] = val;
     });
@@ -85,8 +84,6 @@ export class TechniqueAgent {
     const rmsVariance = ss.variance(this.rmsArray);
 
     // 3. Pitch Trend Analysis (Linear Regression slope)
-    // ss.linearRegression needs [[x, y]], which allocates.
-    // We use a manual zero-allocation slope calculation for uniform x=[0...n-1].
     const pitchTrend = this.calculateSlope(this.centsArray);
 
     // 4. Vibrato Analysis (Simplified: use range as depth proxy)
@@ -109,9 +106,8 @@ export class TechniqueAgent {
 
   /**
    * Manual linear regression slope for uniform sampling.
-   * m = (n*sum(xy) - sum(x)*sum(y)) / (n*sum(x^2) - (sum(x))^2)
    */
-  private calculateSlope(data: Float64Array): number {
+  private calculateSlope(data: number[]): number {
     const n = data.length;
     let sumX = 0;
     let sumY = 0;

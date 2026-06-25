@@ -9,12 +9,11 @@ import { audioPipeline, type RawPitchEvent } from '../audio/audio-pipeline'
 import { type Seconds,ToneBridge } from '../audio/tone-bridge'
 import { type MutablePitchFrame, type PitchFrame,SHARED_PITCH_FRAME } from '../domain/data-structures'
 import { type Exercise,type Note as TargetNote } from '../domain/exercise'
-import { type Cents, frequencyToMidiRaw,type Hertz, lerp } from '../domain/musical-domain'
+import { type Cents, frequencyToMidiRaw,type Hertz } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
 import { audioManager } from '../infrastructure/audio-manager'
 import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
-import { PitchDetector } from '../pitch-detector'
 import { formatPitchName,MusicalNote } from '../practice-core'
 import { type PracticeEvent,practiceMachine } from './practice-machine'
 import { type MusicalEvent,TimelineSynchronizer } from './timeline-synchronizer'
@@ -26,7 +25,6 @@ import { type MusicalEvent,TimelineSynchronizer } from './timeline-synchronizer'
  * Uses RxJS for reactive audio events and XState for session state.
  */
 export class PracticeService {
-  private detector: PitchDetector | null = null
   private lastUpdateTime = 0
   private readonly UPDATE_INTERVAL_SEC = 0.1
   private cachedTargetNote: TargetNote | null = null
@@ -44,7 +42,7 @@ export class PracticeService {
     frame: SHARED_PITCH_FRAME,
   }
 
-  private actor = createActor(practiceMachine, {
+  private actor = createActor(practiceMachine.provide({
     actions: {
       notifySuccess: () => {
         const store = usePracticeStore.getState()
@@ -56,13 +54,9 @@ export class PracticeService {
           },
         })
       },
-      assignTarget: ({ event }) => {
-        if (event.type === 'SET_TARGET') {
-          // Logic handled in practiceMachine setup usually,
-          // but we provide it here if needed to satisfy types or override.
-        }
-      },
     },
+  }), {
+    input: {}
   })
 
   async initialize(exercise: Exercise, onNoteTriggered: (event: MusicalEvent) => void) {
@@ -81,9 +75,6 @@ export class PracticeService {
     this.synchronizer.compile(exercise)
     this.onNoteTriggered = onNoteTriggered
 
-    const sampleRate = audioManager.getContext()?.sampleRate || 44100
-    this.detector = new PitchDetector(sampleRate)
-
     // Setup RxJS Pipeline Subscription
     this.pipelineSubscription = audioPipeline.pitchFrame$.subscribe((frame) => {
       this.processFrame(frame)
@@ -98,12 +89,9 @@ export class PracticeService {
     Tone.getTransport().start()
 
     // Start Audio Hardware Stream
-    await this.audioAdapter.startStream((result: Float32Array) => {
-      audioPipeline.push(result as unknown as RawPitchEvent)
+    await this.audioAdapter.startStream((event: RawPitchEvent) => {
+      audioPipeline.push(event)
     })
-
-    // Start Metronome if needed (example: 120 BPM)
-    // toneAudioPlayer.startMetronome(120);
 
     // Schedule musical events in Tone.js Transport
     this.synchronizer.schedule((event) => {
@@ -203,7 +191,11 @@ export class PracticeService {
       if (this.cachedTargetNote && this.cachedTargetPitch) {
         const midiResult = MusicalNote.tryFromName(this.cachedTargetPitch)
         if (midiResult.isOk()) {
-          this.actor.send({ type: 'SET_TARGET', midi: midiResult.value.midiNumber })
+          const midi = midiResult.value.midiNumber
+          this.actor.send({ type: 'SET_TARGET', midi })
+
+          // Adaptive filtering: update biquad filter to target note's frequency
+          this.audioAdapter.updateFilterFrequency(midiResult.value.frequency)
         }
       }
     }
