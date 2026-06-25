@@ -21,7 +21,7 @@ export type MidiNote = number & { readonly __brand: 'MidiNote' };
 /**
  * Validation Schemas
  */
-const HertzSchema = z.number().finite().nonnegative();
+const HertzSchema = z.number().finite().positive(); // Hertz must be positive for log2 formulas
 const CentsSchema = z.number().finite();
 const MidiNoteSchema = z.number().finite().min(0).max(127);
 
@@ -44,7 +44,7 @@ export function makeHertz(value: number): Result<Hertz, AppError> {
   const result = HertzSchema.safeParse(value);
   if (!result.success) {
     return err(new AppError({
-      message: `Invalid Hertz value: ${value}. Must be a finite non-negative number.`,
+      message: `Invalid Hertz value: ${value}. Must be a finite positive number.`,
       code: ERROR_CODES.DATA_VALIDATION_ERROR,
     }));
   }
@@ -85,11 +85,13 @@ export function makeTuningConfig(a4Frequency: number): Result<TuningConfig, AppE
 
 /**
  * Bidirectional exact conversion formulas (Logarithmic Base 2)
+ *
+ * Formula (Hz to MIDI): m = 12 * log2(f / A4) + 69
+ * Formula (MIDI to Hz): f = A4 * 2^((m - 69) / 12)
  */
 
 /**
  * Converts frequency in Hertz to MIDI Note (fractional).
- * Formula: m = 12 * log2(f / A4) + 69
  */
 export function frequencyToMidi(
   frequency: Hertz,
@@ -122,7 +124,6 @@ export function frequencyToMidiRaw(
 
 /**
  * Converts MIDI Note (fractional) to Hertz.
- * Formula: f = A4 * 2^((m - 69) / 12)
  */
 export function midiToFrequency(
   midi: MidiNote,
@@ -133,47 +134,8 @@ export function midiToFrequency(
 }
 
 /**
- * Normalizes various accidental representations to the canonical numeric format.
- */
-export type CanonicalAccidental = -1 | 0 | 1;
-
-const ACCIDENTAL_MAP: Record<string, CanonicalAccidental> = {
-  '1': 1,
-  'sharp': 1,
-  '#': 1,
-  '2': 1,
-  'double-sharp': 1,
-  '##': 1,
-  '-1': -1,
-  'flat': -1,
-  'b': -1,
-  '-2': -1,
-  'double-flat': -1,
-  'bb': -1,
-  '0': 0,
-  'natural': 0,
-  '': 0,
-};
-
-/**
- * Linear interpolation between two values.
+ * Linear interpolation utility for signal smoothing.
  */
 export function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
-}
-
-export function normalizeAccidental(
-  input: number | string | undefined
-): Result<CanonicalAccidental, AppError> {
-  if (input === undefined) return ok(0);
-  const mappingKey = String(input);
-  const mappedValue = ACCIDENTAL_MAP[mappingKey];
-  if (mappedValue !== undefined) return ok(mappedValue);
-
-  return err(
-    new AppError({
-      message: `Unsupported accidental value: ${input}`,
-      code: ERROR_CODES.DATA_VALIDATION_ERROR,
-    })
-  );
 }
