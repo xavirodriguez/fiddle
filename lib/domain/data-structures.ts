@@ -1,3 +1,5 @@
+import { type TechniqueMetrics } from '../technique-types';
+
 import { type Cents,type Hertz } from './musical-domain';
 import { type TechniqueMetrics } from '../practice/technique-agent';
 

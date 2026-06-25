@@ -20,8 +20,8 @@ import type { PitchFrame } from '@/lib/domain/data-structures'
 import {
   selectActive,
   selectError,
-  useTunerStore,
-} from '@/stores/tuner-store'
+  useAppStore,
+} from '@/stores/app-store'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -78,9 +78,9 @@ function freqToMidiFractional(hz: number): number {
 }
 
 export function TunerDial() {
-  const { start, stop } = useTunerStore()
-  const active  = useTunerStore(selectActive)
-  const error   = useTunerStore(selectError)
+  const { start, stop } = useAppStore()
+  const active  = useAppStore(selectActive)
+  const error   = useAppStore(selectError)
 
   // Refs to DOM nodes updated imperatively in the hot path.
   const needleRef    = useRef<SVGLineElement>(null)
@@ -100,7 +100,7 @@ export function TunerDial() {
 
     // Read the latest Zustand state imperatively — no subscription needed.
     function tick() {
-      const s = useTunerStore.getState()
+      const s = useAppStore.getState()
       const cents      = s.cents
       const frequency  = s.frequency
       const confidence = s.confidence

@@ -113,9 +113,21 @@ export async function saveAsync(key: string, data: unknown): Promise<void> {
 }
 
 /**
- * Asynchronously loads data from local storage.
+ * Migrator function signature.
  */
-export async function loadAsync<T>(key: string, schema: z.ZodType<T>): Promise<T | null> {
+export type Migrator<T = any> = (data: any) => T
+
+/**
+ * Asynchronously loads data from local storage with versioning support.
+ */
+export async function loadAsync<T>(
+  key: string,
+  schema: z.ZodType<T>,
+  options?: {
+    version?: number
+    migrators?: Record<number, Migrator>
+  }
+): Promise<T | null> {
   return new Promise((resolve) => {
     setTimeout(() => {
       const val = localStorage.getItem(key)
@@ -124,8 +136,23 @@ export async function loadAsync<T>(key: string, schema: z.ZodType<T>): Promise<T
         return
       }
       try {
-        const decompressed = decompressAndDeserialize(val)
-        const validated = schema.parse(decompressed)
+        const decompressed = decompressAndDeserialize(val) as any
+        let data = decompressed
+
+        // Handle versioned migrations
+        const currentVersion = data?.__version ?? 0
+        const targetVersion = options?.version ?? 0
+
+        if (currentVersion < targetVersion && options?.migrators) {
+          console.log(`[Persist] Migrating ${key} from v${currentVersion} to v${targetVersion}`)
+          for (let v = currentVersion + 1; v <= targetVersion; v++) {
+            if (options.migrators[v]) {
+              data = options.migrators[v](data)
+            }
+          }
+        }
+
+        const validated = schema.parse(data)
         resolve(validated)
       } catch (error) {
         console.error(`[Persist] Error loading key "${key}":`, error)

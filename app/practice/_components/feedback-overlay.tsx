@@ -23,8 +23,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { VIOLIN_TOLERANCE_CENTS } from '@/lib/domain/data-structures'
 import type { PracticeStatus } from '@/lib/domain/practice'
-import { usePracticeStore } from '@/stores/practice-store'
-import { selectActive,selectCents, selectConfidence, selectFrequency, useTunerStore } from '@/stores/tuner-store'
+import { useAppStore } from '@/stores/app-store'
 
 // ---------------------------------------------------------------------------
 // Constants — defined outside the component so they are never reallocated.
@@ -117,7 +116,7 @@ export function FeedbackOverlay() {
   // Subscribe to practice status via a primitive selector to avoid
   // object-equality re-renders on every frame.
   // ------------------------------------------------------------------
-  const practiceStatus = usePracticeStore((s) => s.practiceState.status)
+  const practiceStatus = useAppStore((s) => s.practiceState.status)
 
   useEffect(() => {
     setIsSessionActive(practiceStatus !== 'idle' && practiceStatus !== 'completed')
@@ -130,7 +129,7 @@ export function FeedbackOverlay() {
   useEffect(() => {
     function tick() {
       // getState() is a synchronous, allocation-free read of the store snapshot.
-      const s = useTunerStore.getState()
+      const s = useAppStore.getState()
 
       const cents      = s.cents      as number
       const confidence = s.confidence

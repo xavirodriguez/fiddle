@@ -2,8 +2,7 @@ import { type Subscription } from 'rxjs'
 import * as Tone from 'tone'
 import { createActor } from 'xstate'
 
-import { usePracticeStore } from '@/stores/practice-store'
-import { useTunerStore } from '@/stores/tuner-store'
+import { useAppStore } from '@/stores/app-store'
 
 import { audioPipeline, type RawPitchEvent } from '../audio/audio-pipeline'
 import { type Seconds,ToneBridge } from '../audio/tone-bridge'
@@ -45,12 +44,23 @@ export class PracticeService {
   private actor = createActor(practiceMachine.provide({
     actions: {
       notifySuccess: () => {
-        const store = usePracticeStore.getState()
+        const store = useAppStore.getState()
         const detected = this.mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch || '')
+
+        // Generate observations for the matched note
+        let observations: any[] = []
+        if (SHARED_PITCH_FRAME.technique) {
+          observations = audioPipeline.getTechniqueAgent().generateObservations(
+            SHARED_PITCH_FRAME.technique,
+            SHARED_PITCH_FRAME.timestamp
+          )
+        }
+
         store.internalUpdate({
           type: 'NOTE_MATCHED',
           payload: {
             isPerfect: Math.abs(detected.cents) < 10,
+            observations,
           },
         })
       },
@@ -107,12 +117,11 @@ export class PracticeService {
 
   private processFrame(frame: PitchFrame) {
     const now = frame.timestamp as Seconds
-    const store = usePracticeStore.getState()
-    const tuner = useTunerStore.getState()
+    const store = useAppStore.getState()
     const shouldUpdateStore = now - this.lastUpdateTime > this.UPDATE_INTERVAL_SEC
 
     // 1. Update Tuner Store (Reactive UI)
-    tuner.updatePitch(frame.frequency, frame.confidence)
+    store.updatePitch(frame.frequency, frame.confidence)
 
     // 2. Real-time sync verification (O(1) Zero-Allocation)
     const detectedMidi = frequencyToMidiRaw(frame.frequency)
@@ -140,7 +149,7 @@ export class PracticeService {
   }
 
   private handlePitchDetected(frame: PitchFrame, now: number, shouldUpdateStore: boolean) {
-    const store = usePracticeStore.getState()
+    const store = useAppStore.getState()
     const practiceState = store.practiceState
 
     const note = MusicalNote.fromFrequencyShared(frame.frequency)

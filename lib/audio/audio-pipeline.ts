@@ -75,8 +75,13 @@ export class AudioPipeline {
         SHARED_PITCH_FRAME.timestamp = event.timestamp
         SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
 
-        // Technique Analysis (Side effect: updates SHARED_TECHNIQUE_METRICS)
-        const metrics = this.techniqueAgent.analyze(SHARED_PITCH_FRAME, event.rms);
+        // 4. Technique Analysis (Side effect: updates SHARED_TECHNIQUE_METRICS)
+        const metrics = this.techniqueAgent.analyze(
+          SHARED_PITCH_FRAME,
+          event.rms,
+          event.spectralFlatness,
+          event.spectralCentroid
+        );
         SHARED_PITCH_FRAME.technique = metrics ?? undefined;
 
         return SHARED_PITCH_FRAME
@@ -95,6 +100,10 @@ export class AudioPipeline {
    */
   push(event: RawPitchEvent): void {
     this.inputSubject.next(event)
+  }
+
+  getTechniqueAgent(): TechniqueAgent {
+    return this.techniqueAgent
   }
 
   /**
