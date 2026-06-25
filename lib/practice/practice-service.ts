@@ -33,8 +33,6 @@ export class PracticeService {
   private cachedTargetPitch: string | null = null
   private cachedIndex: number = -1
   private cachedExerciseId: string = ''
-  private smoothedFrequency: number = 0
-  private readonly SMOOTHING_FACTOR = 0.2
   private synchronizer = new TimelineSynchronizer()
   private onNoteTriggered: ((event: MusicalEvent) => void) | null = null
   private pipelineSubscription: Subscription | null = null
@@ -47,7 +45,6 @@ export class PracticeService {
   }
 
   private actor = createActor(practiceMachine, {
-    // @ts-ignore - XState v5 types can be strict with provide/actions
     actions: {
       notifySuccess: () => {
         const store = usePracticeStore.getState()
@@ -58,6 +55,12 @@ export class PracticeService {
             isPerfect: Math.abs(detected.cents) < 10,
           },
         })
+      },
+      assignTarget: ({ event }) => {
+        if (event.type === 'SET_TARGET') {
+          // Logic handled in practiceMachine setup usually,
+          // but we provide it here if needed to satisfy types or override.
+        }
       },
     },
   })
@@ -95,8 +98,8 @@ export class PracticeService {
     Tone.getTransport().start()
 
     // Start Audio Hardware Stream
-    await this.audioAdapter.startStream((result: any) => {
-      audioPipeline.push(result as RawPitchEvent)
+    await this.audioAdapter.startStream((result: Float32Array) => {
+      audioPipeline.push(result as unknown as RawPitchEvent)
     })
 
     // Start Metronome if needed (example: 120 BPM)
@@ -152,22 +155,19 @@ export class PracticeService {
     const store = usePracticeStore.getState()
     const practiceState = store.practiceState
 
-    if (this.smoothedFrequency === 0) {
-      this.smoothedFrequency = frame.frequency
-    } else {
-      this.smoothedFrequency = lerp(this.smoothedFrequency, frame.frequency, this.SMOOTHING_FACTOR)
-    }
+    const note = MusicalNote.fromFrequencyShared(frame.frequency)
 
-    const note = MusicalNote.fromFrequencyShared(this.smoothedFrequency)
-
-    SHARED_PITCH_FRAME.frequency = this.smoothedFrequency as Hertz
+    SHARED_PITCH_FRAME.frequency = frame.frequency
     SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
     SHARED_PITCH_FRAME.timestamp = now
     SHARED_PITCH_FRAME.confidence = frame.confidence
 
     this.updateTargetCache(practiceState)
 
-    const detectedNote = this.mapFrameToDetectedNote(frame, MusicalNote.fromFrequencyShared(frame.frequency).nameWithOctave)
+    const detectedNote = this.mapFrameToDetectedNote(
+      SHARED_PITCH_FRAME,
+      MusicalNote.fromFrequencyShared(frame.frequency).nameWithOctave,
+    )
 
     if (shouldUpdateStore) {
       store.internalUpdate({ type: 'NOTE_DETECTED', payload: detectedNote })

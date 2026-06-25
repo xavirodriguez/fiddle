@@ -104,20 +104,5 @@ export class PitchDetector {
     return dr;
   }
 
-  /**
-   * Detects pitch with an RMS noise gate.
-   * @deprecated Use detect() directly as it now includes an internal noise gate.
-   */
-  detectPitchWithValidation(
-    buffer: Float32Array,
-    rmsThreshold = 0.01,
-  ): PitchDetectionResult {
-    const dr = this.detect(buffer);
-    if (dr.rms < rmsThreshold) {
-      dr.pitchHz = 0;
-      dr.confidence = 0;
-    }
-    return dr;
-  }
 
 }
