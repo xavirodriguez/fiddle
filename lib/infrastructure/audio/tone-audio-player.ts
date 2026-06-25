@@ -80,12 +80,27 @@ export class ToneAudioPlayer implements AudioPlayerPort {
   /**
    * Schedules a callback at a specific musical time.
    */
-  scheduleEvent(callback: (time: number) => void, time: string | number): number {
+  scheduleEvent(callback: (time: number) => void, time: string | number | Seconds): number {
     return Tone.getTransport().schedule(callback, time)
   }
 
   clearEvent(id: number): void {
     Tone.getTransport().clear(id)
+  }
+
+  /**
+   * Play a reference note at a given frequency.
+   */
+  playReference(frequency: number, volume = 0.3): void {
+    this.synth.volume.value = Tone.gainToDb(volume);
+    this.synth.triggerAttack(frequency, Tone.now());
+  }
+
+  /**
+   * Stop reference note playback.
+   */
+  stopReference(): void {
+    this.synth.releaseAll();
   }
 }
 

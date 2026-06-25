@@ -8,12 +8,11 @@ import { audioPipeline, type RawPitchEvent } from '../audio/audio-pipeline'
 import { type Seconds,ToneBridge } from '../audio/tone-bridge'
 import { type MutablePitchFrame, type PitchFrame,SHARED_PITCH_FRAME } from '../domain/data-structures'
 import { type Exercise,type Note as TargetNote } from '../domain/exercise'
-import { type Cents, frequencyToMidiRaw,type Hertz, lerp } from '../domain/musical-domain'
+import { type Cents, frequencyToMidiRaw,type Hertz } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
 import { audioManager } from '../infrastructure/audio-manager'
 import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
-import { PitchDetector } from '../pitch-detector'
 import { formatPitchName,MusicalNote } from '../practice-core'
 import { type PracticeEvent,practiceMachine } from './practice-machine'
 import { type MusicalEvent,TimelineSynchronizer } from './timeline-synchronizer'
@@ -25,15 +24,12 @@ import { type MusicalEvent,TimelineSynchronizer } from './timeline-synchronizer'
  * Uses RxJS for reactive audio events and XState for session state.
  */
 export class PracticeService {
-  private detector: PitchDetector | null = null
   private lastUpdateTime = 0
   private readonly UPDATE_INTERVAL_SEC = 0.1
   private cachedTargetNote: TargetNote | null = null
   private cachedTargetPitch: string | null = null
   private cachedIndex: number = -1
   private cachedExerciseId: string = ''
-  private smoothedFrequency: number = 0
-  private readonly SMOOTHING_FACTOR = 0.2
   private synchronizer = new TimelineSynchronizer()
   private onNoteTriggered: ((event: MusicalEvent) => void) | null = null
   private pipelineSubscription: Subscription | null = null
@@ -45,8 +41,7 @@ export class PracticeService {
     frame: SHARED_PITCH_FRAME,
   }
 
-  private actor = createActor(practiceMachine, {
-    // @ts-ignore - XState v5 types can be strict with provide/actions
+  private actor = createActor(practiceMachine.provide({
     actions: {
       notifySuccess: () => {
         const store = useAppStore.getState()
@@ -70,6 +65,8 @@ export class PracticeService {
         })
       },
     },
+  }), {
+    input: {}
   })
 
   async initialize(exercise: Exercise, onNoteTriggered: (event: MusicalEvent) => void) {
@@ -88,9 +85,6 @@ export class PracticeService {
     this.synchronizer.compile(exercise)
     this.onNoteTriggered = onNoteTriggered
 
-    const sampleRate = audioManager.getContext()?.sampleRate || 44100
-    this.detector = new PitchDetector(sampleRate)
-
     // Setup RxJS Pipeline Subscription
     this.pipelineSubscription = audioPipeline.pitchFrame$.subscribe((frame) => {
       this.processFrame(frame)
@@ -105,12 +99,9 @@ export class PracticeService {
     Tone.getTransport().start()
 
     // Start Audio Hardware Stream
-    await this.audioAdapter.startStream((result: any) => {
-      audioPipeline.push(result as RawPitchEvent)
+    await this.audioAdapter.startStream((event: RawPitchEvent) => {
+      audioPipeline.push(event)
     })
-
-    // Start Metronome if needed (example: 120 BPM)
-    // toneAudioPlayer.startMetronome(120);
 
     // Schedule musical events in Tone.js Transport
     this.synchronizer.schedule((event) => {
@@ -161,22 +152,19 @@ export class PracticeService {
     const store = useAppStore.getState()
     const practiceState = store.practiceState
 
-    if (this.smoothedFrequency === 0) {
-      this.smoothedFrequency = frame.frequency
-    } else {
-      this.smoothedFrequency = lerp(this.smoothedFrequency, frame.frequency, this.SMOOTHING_FACTOR)
-    }
+    const note = MusicalNote.fromFrequencyShared(frame.frequency)
 
-    const note = MusicalNote.fromFrequencyShared(this.smoothedFrequency)
-
-    SHARED_PITCH_FRAME.frequency = this.smoothedFrequency as Hertz
+    SHARED_PITCH_FRAME.frequency = frame.frequency
     SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
     SHARED_PITCH_FRAME.timestamp = now
     SHARED_PITCH_FRAME.confidence = frame.confidence
 
     this.updateTargetCache(practiceState)
 
-    const detectedNote = this.mapFrameToDetectedNote(frame, MusicalNote.fromFrequencyShared(frame.frequency).nameWithOctave)
+    const detectedNote = this.mapFrameToDetectedNote(
+      SHARED_PITCH_FRAME,
+      MusicalNote.fromFrequencyShared(frame.frequency).nameWithOctave,
+    )
 
     if (shouldUpdateStore) {
       store.internalUpdate({ type: 'NOTE_DETECTED', payload: detectedNote })
@@ -212,7 +200,11 @@ export class PracticeService {
       if (this.cachedTargetNote && this.cachedTargetPitch) {
         const midiResult = MusicalNote.tryFromName(this.cachedTargetPitch)
         if (midiResult.isOk()) {
-          this.actor.send({ type: 'SET_TARGET', midi: midiResult.value.midiNumber })
+          const midi = midiResult.value.midiNumber
+          this.actor.send({ type: 'SET_TARGET', midi })
+
+          // Adaptive filtering: update biquad filter to target note's frequency
+          this.audioAdapter.updateFilterFrequency(midiResult.value.frequency)
         }
       }
     }

@@ -1,5 +1,6 @@
 import { err,ok, type Result } from 'neverthrow';
 
+import { type RawPitchEvent } from '../../audio/audio-pipeline';
 import { AppError, ERROR_CODES } from '../../errors/app-error';
 import { type AudioCapturePort, type AudioDeviceEvent } from '../../ports/audio.port';
 
@@ -82,7 +83,7 @@ export class WebAudioAdapter implements AudioCapturePort {
     }
   }
 
-  async startStream(onFrame: (frame: Float32Array) => void): Promise<Result<void, AppError>> {
+  async startStream(onFrame: (event: RawPitchEvent) => void): Promise<Result<void, AppError>> {
     if (!this.audioContext || !this.compressor) {
       const initResult = await this.initialize();
       if (initResult.isErr()) return initResult;
@@ -98,8 +99,11 @@ export class WebAudioAdapter implements AudioCapturePort {
 
       this.workletNode = new AudioWorkletNode(ctx, 'capture-processor');
       this.workletNode.port.onmessage = (event) => {
-        onFrame(event.data);
+        onFrame(event.data as RawPitchEvent);
       };
+
+      // Notify the worklet about the sample rate
+      this.workletNode.port.postMessage({ type: 'init', sampleRate: ctx.sampleRate });
 
       comp.connect(this.workletNode);
       this.emit('statechange', 'streaming');
