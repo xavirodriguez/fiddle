@@ -32,25 +32,25 @@ export interface SheetMusicWrapperProps {
    * Raw MusicXML string (not a URL). Pass `null` to show the empty state.
    * Changing this value triggers a full OSMD reload.
    */
-  musicXml: string | null
+  readonly musicXml: string | null
 
   /**
    * The zero-based index of the note the cursor should point to.
    * When this changes the effect calls `cursor.next()` / `cursor.previous()`
    * until the internal OSMD cursor reaches the matching position.
    */
-  cursorIndex: number
+  readonly cursorIndex: number
 
   /**
    * Called once OSMD has rendered the score, passing back the total note
    * count so the container can clamp navigation boundaries.
    */
-  onReady?: (totalNotes: number) => void
+  readonly onReady?: (totalNotes: number) => void
 
   /**
    * Called when OSMD encounters an unrecoverable load error.
    */
-  onError?: (error: Error) => void
+  readonly onError?: (error: Error) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +155,7 @@ function SheetMusicWrapperInner({
       }
     }
 
-    loadScore()
+    void loadScore()
 
     return () => {
       cancelled = true

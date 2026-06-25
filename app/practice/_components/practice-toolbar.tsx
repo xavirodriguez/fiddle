@@ -8,19 +8,19 @@ import { ChevronLeft, ChevronRight, Play, Repeat,RotateCcw, Square } from 'lucid
 
 export interface PracticeToolbarProps {
   /** Whether a practice session is currently active. */
-  isPlaying: boolean
+  readonly isPlaying: boolean
   /** Whether the loop / drill mode is enabled. */
-  isLoopEnabled: boolean
+  readonly isLoopEnabled: boolean
   /** Called when the user presses the Play / Stop toggle. */
-  onTogglePlay: () => void
+  readonly onTogglePlay: () => void
   /** Called when the user presses the Reset button. */
-  onReset: () => void
+  readonly onReset: () => void
   /** Called when the user presses the Previous Note button. */
-  onPrevNote: () => void
+  readonly onPrevNote: () => void
   /** Called when the user presses the Next Note button. */
-  onNextNote: () => void
+  readonly onNextNote: () => void
   /** Called when the user toggles loop / drill mode. */
-  onToggleLoop: () => void
+  readonly onToggleLoop: () => void
 }
 
 // ---------------------------------------------------------------------------

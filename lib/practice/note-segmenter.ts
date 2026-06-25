@@ -24,9 +24,14 @@ export type NoteSegmenterEvent =
  * Robustly distinguishes between silence and musical notes using XState v5.
  * Designed for low-latency practice sessions.
  */
+const _context: NoteSegmenterContext = {
+  consecutiveFrames: 0,
+  minFramesForNote: 2,
+}
+
 export const noteSegmenterMachine = setup({
   types: {
-    context: {} as NoteSegmenterContext,
+    context: _context,
     events: {} as NoteSegmenterEvent,
   },
   actions: {
