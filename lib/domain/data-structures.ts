@@ -1,4 +1,5 @@
 import { type Cents,type Hertz } from './musical-domain';
+import { type TechniqueMetrics } from '../practice/technique-agent';
 
 /**
  * Violin-specific domain constants.
@@ -15,6 +16,7 @@ export interface PitchFrame {
   readonly centsDeviation: Cents;
   readonly confidence: number;
   readonly timestamp: number; // Linked to AudioContext.currentTime
+  readonly technique?: TechniqueMetrics;
 }
 
 /**
@@ -26,6 +28,7 @@ export interface MutablePitchFrame {
   centsDeviation: Cents;
   confidence: number;
   timestamp: number;
+  technique?: TechniqueMetrics;
 }
 
 /**

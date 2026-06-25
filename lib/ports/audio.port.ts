@@ -1,6 +1,6 @@
 import { type Result } from 'neverthrow'
 
-import { type PitchFrame } from '../domain/data-structures'
+import { type RawPitchEvent } from '../audio/audio-pipeline'
 import { type AppError } from '../errors/app-error'
 
 /**
@@ -19,9 +19,9 @@ export interface AudioCapturePort {
 
   /**
    * Starts capturing audio and streaming it to the processing pipeline.
-   * @param onFrame Callback for each captured audio buffer.
+   * @param onFrame Callback for each captured audio detection event.
    */
-  startStream(onFrame: (frame: Float32Array) => void): Promise<Result<void, AppError>>
+  startStream(onFrame: (event: RawPitchEvent) => void): Promise<Result<void, AppError>>
 
   /**
    * Stops the current audio stream and releases hardware resources.
@@ -59,7 +59,7 @@ export interface PitchDetectorWorkerPort {
   /**
    * Registers a callback for when the worker completes an analysis.
    */
-  onResult(callback: (result: PitchFrame) => void): void
+  onResult(callback: (result: any) => void): void
 
   /**
    * Terminates the worker.
