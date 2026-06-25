@@ -111,7 +111,7 @@ export class PracticeService {
 
   stop() {
     this.actor.stop()
-    this.audioAdapter.stopStream()
+    void this.audioAdapter.stopStream()
     toneAudioPlayer.stopAll()
   }
 

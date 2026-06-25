@@ -192,7 +192,7 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
         }
       }
 
-      initOsmd()
+      void initOsmd()
 
       return () => {
         isMounted = false

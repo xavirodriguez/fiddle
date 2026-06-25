@@ -158,7 +158,9 @@ export function createTunerStream(
       cancelAnimationFrame(rafId)
       source?.disconnect()
       analyser?.disconnect()
-      void audioCtx?.close()
+      if (audioCtx) {
+        void audioCtx.close()
+      }
       mediaStream?.getTracks().forEach((t) => t.stop())
     }
   })

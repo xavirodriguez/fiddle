@@ -50,18 +50,21 @@ export function PracticeContainer() {
   const isPlaying = practiceState.status !== 'idle' && practiceState.status !== 'completed'
   const isLoopEnabled = practiceState.loopRegion?.isEnabled ?? false
 
-  async function handleTogglePlay() {
-    if (isPlaying) {
-      practiceService.stop()
-      internalUpdate({ type: 'STOP' })
-    } else {
-      await audioManager.initialize()
-      await practiceService.initialize(practiceState.exercise, (event) => {
-        scoreRef.current?.nextStep()
-      })
-      await practiceService.start()
-      internalUpdate({ type: 'START' })
+  const handleTogglePlay = () => {
+    const toggle = async () => {
+      if (isPlaying) {
+        practiceService.stop()
+        internalUpdate({ type: 'STOP' })
+      } else {
+        await audioManager.initialize()
+        await practiceService.initialize(practiceState.exercise, (_event) => {
+          scoreRef.current?.nextStep()
+        })
+        await practiceService.start()
+        internalUpdate({ type: 'START' })
+      }
     }
+    void toggle()
   }
 
   function handleReset() {

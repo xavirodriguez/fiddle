@@ -1,6 +1,6 @@
-import { assign, setup } from 'xstate';
+import { assign, setup } from 'xstate'
 
-import { type PitchFrame } from '../domain/data-structures';
+import { type PitchFrame } from '../domain/data-structures'
 import { frequencyToMidi } from '../domain/musical-domain';
 
 export interface PracticeContext {
@@ -19,24 +19,33 @@ export type PracticeEvent =
   | { type: 'PITCH_LOST' }
   | { type: 'SET_TARGET'; midi: number };
 
+const _context: PracticeContext = {
+  targetMidi: 0,
+  toleranceCents: 15,
+  requiredHoldTime: 1.0,
+  currentHoldTime: 0,
+  lastTimestamp: 0,
+  errorCount: 0,
+}
+
 export const practiceMachine = setup({
   types: {
-    context: {} as PracticeContext,
+    context: _context,
     events: {} as PracticeEvent,
     input: {} as Partial<PracticeContext>,
   },
   guards: {
     isCorrectPitch: ({ context, event }) => {
-      if (event.type !== 'PITCH_DETECTED') return false;
-      const result = frequencyToMidi(event.frame.frequency);
-      if (result.isErr()) return false;
-      const diff = Math.abs(result.value - context.targetMidi) * 100;
-      return diff <= context.toleranceCents;
+      if (event.type !== 'PITCH_DETECTED') return false
+      const result = frequencyToMidi(event.frame.frequency)
+      if (result.isErr()) return false
+      const diff = Math.abs(result.value - context.targetMidi) * 100
+      return diff <= context.toleranceCents
     },
     isHoldComplete: ({ context, event }) => {
-      if (event.type !== 'PITCH_DETECTED') return false;
-      const delta = context.lastTimestamp > 0 ? event.frame.timestamp - context.lastTimestamp : 0;
-      return (context.currentHoldTime + delta) >= context.requiredHoldTime;
+      if (event.type !== 'PITCH_DETECTED') return false
+      const delta = context.lastTimestamp > 0 ? event.frame.timestamp - context.lastTimestamp : 0
+      return context.currentHoldTime + delta >= context.requiredHoldTime
     },
   },
   actions: {
@@ -48,9 +57,9 @@ export const practiceMachine = setup({
     }),
     incrementHoldTime: assign({
       currentHoldTime: ({ context, event }) => {
-        if (event.type !== 'PITCH_DETECTED') return context.currentHoldTime;
-        const delta = context.lastTimestamp > 0 ? event.frame.timestamp - context.lastTimestamp : 0;
-        return context.currentHoldTime + delta;
+        if (event.type !== 'PITCH_DETECTED') return context.currentHoldTime
+        const delta = context.lastTimestamp > 0 ? event.frame.timestamp - context.lastTimestamp : 0
+        return context.currentHoldTime + delta
       },
       lastTimestamp: ({ event }) => (event.type === 'PITCH_DETECTED' ? event.frame.timestamp : 0),
     }),
@@ -59,22 +68,20 @@ export const practiceMachine = setup({
       lastTimestamp: 0,
     }),
     notifySuccess: () => {
-      // Logic provided via provide() or implementation
+      // Inlined in PracticeService.actor definition
     },
   },
 }).createMachine({
   id: 'practice',
   initial: 'idle',
-  types: {
-    context: {} as PracticeContext,
-  },
-  context: ({ input }: { input?: Partial<PracticeContext> }) => ({
-    targetMidi: input?.targetMidi ?? 0,
-    toleranceCents: input?.toleranceCents ?? 15,
-    requiredHoldTime: input?.requiredHoldTime ?? 1.0,
-    currentHoldTime: input?.currentHoldTime ?? 0,
-    lastTimestamp: input?.lastTimestamp ?? 0,
-    errorCount: input?.errorCount ?? 0,
+  context: ({ input }) => ({
+    targetMidi: 0,
+    toleranceCents: 15,
+    requiredHoldTime: 1.0,
+    currentHoldTime: 0,
+    lastTimestamp: 0,
+    errorCount: 0,
+    ...input,
   }),
   on: {
     SET_TARGET: {
@@ -144,4 +151,4 @@ export const practiceMachine = setup({
       },
     },
   },
-});
+})

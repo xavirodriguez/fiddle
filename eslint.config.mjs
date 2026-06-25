@@ -12,7 +12,18 @@ import globals from "globals";
 
 export default tseslint.config(
   // ── Archivos ignorados ──────────────────────────────────────────
-  { ignores: [".next/**", "node_modules/**", "dist/**", "temp/**", "docs/**"] },
+  {
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "dist/**",
+      "temp/**",
+      "docs/**",
+      "eslint.config.mjs",
+      "postcss.config.mjs",
+      "public/worklets/**",
+    ],
+  },
 
   // ── Base JS ─────────────────────────────────────────────────────
   js.configs.recommended,
