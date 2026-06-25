@@ -42,16 +42,25 @@ Resultado:  isCorrectPitch: true, timingError: 0.02s
 ## 4. Dependencias entre Módulos
 
 ```text
-[ UI Components ]
-      |
+[ UI Components (React) ]
+      | (Observa)
       v
-[ PracticeService (Orquestador) ]
-      |
-      +--> [ ToneBridge ]
-      +--> [ TimelineSynchronizer ]
-      +--> [ ScoreViewer (API Imperativa) ]
-      +--> [ AudioPipeline ]
-      +--> [ Zustand Store ]
+[ Zustand Store ] <-----------------+
+      ^                             | (Solo cambios discretos)
+      |                             |
+[ PracticeService (Orchestrator) ]--+
+      | (Imperative Call)           |
+      v                             |
+[ ScoreViewer (OSMD) ]              |
+      ^                             | (O(1) Verification)
+      |                             |
+      +---- [ TimelineSynchronizer ]
+      |             ^
+      |             | (Refloj de Hardware)
+      +---- [ Tone.Transport ] <----+
+                    ^               |
+                    |               |
+[ Mic ] -> [ DSP Pipeline ] -> [ ToneBridge ]
 ```
 
 ## 5. Decisiones de Rendimiento

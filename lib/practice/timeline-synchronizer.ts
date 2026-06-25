@@ -6,12 +6,21 @@
  *
  * Design Decisions:
  * 1. Determinism: Pre-calculates the absolute time for every note to avoid
- *    accumulative drift.
- * 2. Performance: O(1) verification using a pointer-based lookup in a
- *    pre-sorted array.
- * 3. Zero-allocation: Reuses event objects where possible and avoids
- *    creating new arrays in the hot path.
- * 4. Sample-accurate: Uses Tone.Transport for precise event scheduling.
+ *    accumulative drift. By using absolute timestamps referenced to the start
+ *    of the transport, we ensure that rounding errors don't compound.
+ * 2. O(1) Verification: Uses a pointer-based lookup in a pre-sorted array.
+ *    Since audio detection happens sequentially, we can maintain a pointer
+ *    to the current expected note and only move forward when the clock
+ *    reaches the next event's start time.
+ * 3. Zero-allocation: Reuses a singleton `SHARED_VERIFICATION_RESULT`
+ *    object to provide feedback to the practice service without triggering
+ *    Garbage Collection (GC) pauses at 60 FPS.
+ * 4. Temporal Drift Mitigation:
+ *    - Drift Source: Differences between the CPU clock (performance.now) and
+ *      the Audio Hardware clock.
+ *    - Mitigation: All timing logic uses `Tone.now()` or `AudioContext.currentTime`.
+ *    - Drift Source: Accumulative error in `currentTime += duration` during compilation.
+ *    - Mitigation: Use absolute scheduling in Tone.Transport.
  */
 
 import { err,ok, type Result } from 'neverthrow'
