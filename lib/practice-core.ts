@@ -299,11 +299,11 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
           draft.detectionHistory = []
         }
 
-        const currentBuffer = DETECTION_HISTORY_BUFFER.toArray()
-        draft.detectionHistory.length = currentBuffer.length
-        for (let i = 0; i < currentBuffer.length; i++) {
-          draft.detectionHistory[i] = castDraft(currentBuffer[i])
-        }
+        // Update the draft array in-place to avoid re-allocation using Zero-Allocation iteration
+        draft.detectionHistory.length = DETECTION_HISTORY_BUFFER.length
+        DETECTION_HISTORY_BUFFER.forEach((item, i) => {
+          draft.detectionHistory[i] = castDraft(item)
+        })
 
         if (draft.status === 'correct') {
           draft.status = 'listening'
