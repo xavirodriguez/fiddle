@@ -1,6 +1,6 @@
 import * as Tone from 'tone'
 
-import { BPM,Seconds, ToneBridge } from '../../audio/tone-bridge'
+import { BPM,type Seconds, ToneBridge } from '../../audio/tone-bridge'
 import { type AudioPlayerPort } from '../../ports/audio-player.port'
 
 /**
@@ -75,6 +75,7 @@ export class ToneAudioPlayer implements AudioPlayerPort {
     this.stopAll()
     this._synth?.dispose()
     this.clickLoop?.dispose()
+    return Promise.resolve()
   }
 
   /**

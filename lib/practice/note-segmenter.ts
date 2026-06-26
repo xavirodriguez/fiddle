@@ -31,7 +31,7 @@ const _context: NoteSegmenterContext = {
 
 export const noteSegmenterMachine = setup({
   types: {
-    context: _context,
+    context: {} as NoteSegmenterContext,
     events: {} as NoteSegmenterEvent,
   },
   actions: {
@@ -43,8 +43,10 @@ export const noteSegmenterMachine = setup({
     }),
   },
   guards: {
-    isStrongSignal: ({ event }) =>
-      event.type === 'PITCH_DETECTED' && event.confidence > 0.8 && event.rms > 0.01,
+    isStrongSignal: ({ event }) => {
+      if (event.type !== 'PITCH_DETECTED') return false;
+      return event.confidence > 0.8 && event.rms > 0.01;
+    },
     isConfirmedNote: ({ context }) => context.consecutiveFrames >= 2,
   },
 }).createMachine({

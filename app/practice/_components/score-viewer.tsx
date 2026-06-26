@@ -45,9 +45,9 @@ export interface ScoreViewerRef {
 }
 
 interface ScoreViewerProps {
-  onReady?: (totalNotes: number) => void
-  onError?: (error: Error) => void
-  className?: string
+  readonly onReady?: (totalNotes: number) => void
+  readonly onError?: (error: Error) => void
+  readonly className?: string
 }
 
 // ---------------------------------------------------------------------------

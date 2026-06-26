@@ -138,7 +138,7 @@ export function createTunerStream(
     }
 
     // Async setup — errors surface through subscriber.error().
-    ;(async () => {
+    void (async () => {
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
         audioCtx = new AudioContext(config.sampleRate ? { sampleRate: config.sampleRate } : undefined)
