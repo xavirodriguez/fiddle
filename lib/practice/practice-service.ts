@@ -45,7 +45,7 @@ export class PracticeService {
     actions: {
       notifySuccess: () => {
         const store = useAppStore.getState()
-        const detected = this.mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch || '')
+        const detected = mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch || '')
 
         // Generate observations for the matched note
         let observations: any[] = []
@@ -161,7 +161,7 @@ export class PracticeService {
 
     this.updateTargetCache(practiceState)
 
-    const detectedNote = this.mapFrameToDetectedNote(
+    const detectedNote = mapFrameToDetectedNote(
       SHARED_PITCH_FRAME,
       MusicalNote.fromFrequencyShared(frame.frequency).nameWithOctave,
     )
@@ -175,15 +175,6 @@ export class PracticeService {
     this.actor.send(this.REUSABLE_PITCH_EVENT)
   }
 
-  private mapFrameToDetectedNote(frame: MutablePitchFrame, pitchName: string): DetectedNote {
-    return {
-      pitch: pitchName,
-      pitchHz: frame.frequency,
-      cents: frame.centsDeviation,
-      timestamp: frame.timestamp,
-      confidence: frame.confidence,
-    }
-  }
 
   private updateTargetCache(practiceState: PracticeState | undefined) {
     if (
@@ -213,6 +204,20 @@ export class PracticeService {
   cleanup() {
     this.pipelineSubscription?.unsubscribe()
     this.stop()
+  }
+}
+
+/**
+ * Pure adapter function to map a MutablePitchFrame to a DetectedNote.
+ * Ensures zero-allocation when used in the hot path.
+ */
+function mapFrameToDetectedNote(frame: MutablePitchFrame, pitchName: string): DetectedNote {
+  return {
+    pitch: pitchName,
+    pitchHz: frame.frequency,
+    cents: frame.centsDeviation,
+    timestamp: frame.timestamp,
+    confidence: frame.confidence,
   }
 }
 
