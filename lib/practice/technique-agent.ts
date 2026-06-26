@@ -16,15 +16,15 @@ export class TechniqueAgent {
   private readonly rmsBuffer: CircularBuffer<number>;
 
   // Pre-allocated arrays for Simple-Statistics compatibility without per-frame allocation
-  private readonly centsArray: number[];
-  private readonly rmsArray: number[];
+  private readonly centsArray: Float64Array;
+  private readonly rmsArray: Float64Array;
 
   constructor(windowSize = 30) {
     this.windowSize = windowSize;
     this.centsBuffer = new CircularBuffer(Float64Array, windowSize);
     this.rmsBuffer = new CircularBuffer(Float32Array, windowSize);
-    this.centsArray = new Array(windowSize);
-    this.rmsArray = new Array(windowSize);
+    this.centsArray = new Float64Array(windowSize);
+    this.rmsArray = new Float64Array(windowSize);
   }
 
   /**
@@ -194,7 +194,7 @@ export class TechniqueAgent {
   /**
    * Manual linear regression slope for uniform sampling.
    */
-  private calculateSlope(data: number[]): number {
+  private calculateSlope(data: Float64Array): number {
     const n = data.length;
     let sumX = 0;
     let sumY = 0;

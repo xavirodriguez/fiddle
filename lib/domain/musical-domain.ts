@@ -139,3 +139,19 @@ export function midiToFrequency(
 export function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
 }
+
+/**
+ * Normalizes and validates a musical accidental.
+ * -1 (flat), 0 (natural), 1 (sharp).
+ */
+export function normalizeAccidental(alter: number): Result<number, AppError> {
+  if (alter !== -1 && alter !== 0 && alter !== 1) {
+    return err(
+      new AppError({
+        message: `Invalid accidental: ${alter}. Expected -1, 0, or 1.`,
+        code: ERROR_CODES.DATA_VALIDATION_ERROR,
+      }),
+    )
+  }
+  return ok(alter)
+}

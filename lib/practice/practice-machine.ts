@@ -1,7 +1,7 @@
 import { assign, setup } from 'xstate'
 
 import { type PitchFrame } from '../domain/data-structures'
-import { frequencyToMidi } from '../domain/musical-domain';
+import { frequencyToMidiRaw } from '../domain/musical-domain';
 
 export interface PracticeContext {
   targetMidi: number;
@@ -37,9 +37,8 @@ export const practiceMachine = setup({
   guards: {
     isCorrectPitch: ({ context, event }) => {
       if (event.type !== 'PITCH_DETECTED') return false
-      const result = frequencyToMidi(event.frame.frequency)
-      if (result.isErr()) return false
-      const diff = Math.abs(result.value - context.targetMidi) * 100
+      const midi = frequencyToMidiRaw(event.frame.frequency)
+      const diff = Math.abs(midi - context.targetMidi) * 100
       return diff <= context.toleranceCents
     },
     isHoldComplete: ({ context, event }) => {

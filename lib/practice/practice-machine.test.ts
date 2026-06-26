@@ -7,7 +7,16 @@ import { practiceMachine } from './practice-machine'
 
 describe('Practice State Machine (XState v5)', () => {
   it('should transition from idle to listening on START', () => {
-    const actor = createActor(practiceMachine)
+    const actor = createActor(practiceMachine, {
+      input: {
+        targetMidi: 0,
+        toleranceCents: 15,
+        requiredHoldTime: 1.0,
+        currentHoldTime: 0,
+        lastTimestamp: 0,
+        errorCount: 0,
+      }
+    })
     actor.start()
     expect(actor.getSnapshot().value).toBe('idle')
 
@@ -19,7 +28,11 @@ describe('Practice State Machine (XState v5)', () => {
     const actor = createActor(practiceMachine, {
       input: {
         targetMidi: 69,
-        toleranceCents: 15
+        toleranceCents: 15,
+        requiredHoldTime: 1.0,
+        currentHoldTime: 0,
+        lastTimestamp: 0,
+        errorCount: 0,
       }
     })
     actor.start()
@@ -44,7 +57,9 @@ describe('Practice State Machine (XState v5)', () => {
         targetMidi: 69,
         requiredHoldTime: 0.5,
         currentHoldTime: 0.1,
-        lastTimestamp: 1.0
+        lastTimestamp: 1.0,
+        toleranceCents: 15,
+        errorCount: 0,
       }
     })
     actor.start()
@@ -80,7 +95,10 @@ describe('Practice State Machine (XState v5)', () => {
       input: {
         targetMidi: 69,
         currentHoldTime: 0.4,
-        lastTimestamp: 1.0
+        lastTimestamp: 1.0,
+        requiredHoldTime: 1.0,
+        toleranceCents: 15,
+        errorCount: 0,
       }
     })
     actor.start()
