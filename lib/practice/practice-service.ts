@@ -10,9 +10,9 @@ import { type MutablePitchFrame, type PitchFrame,SHARED_PITCH_FRAME } from '../d
 import { type Exercise,type Note as TargetNote } from '../domain/exercise'
 import { type Cents, frequencyToMidiRaw,type Hertz } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
+import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
 import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
 import { audioManager } from '../infrastructure/audio-manager'
-import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
 import { formatPitchName,MusicalNote } from '../practice-core'
 import { type PracticeEvent,practiceMachine } from './practice-machine'
 import { type MusicalEvent,TimelineSynchronizer } from './timeline-synchronizer'
@@ -104,7 +104,7 @@ export class PracticeService {
     })
 
     // Schedule musical events in Tone.js Transport
-    this.synchronizer.schedule((event) => {
+    void this.synchronizer.schedule((event) => {
       if (this.onNoteTriggered) this.onNoteTriggered(event)
     })
   }

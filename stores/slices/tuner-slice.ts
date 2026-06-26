@@ -36,7 +36,7 @@ export const createTunerSlice: StateCreator<TunerSlice> = (set, get) => {
 
     start() {
       if (get().active) return
-      void import('@/lib/audio/tuner-stream').then(({ createTunerStream }) => {
+      import('@/lib/audio/tuner-stream').then(({ createTunerStream }) => {
         set({ active: true, error: null })
         subscription = createTunerStream().subscribe({
           next(frame: PitchFrame) {
@@ -57,6 +57,8 @@ export const createTunerSlice: StateCreator<TunerSlice> = (set, get) => {
             subscription = null
           },
         })
+      }).catch((err) => {
+        set({ active: false, error: err instanceof Error ? err.message : String(err) })
       })
     },
 

@@ -30,9 +30,9 @@ const _context: PracticeContext = {
 
 export const practiceMachine = setup({
   types: {
-    context: _context,
+    context: {} as PracticeContext,
     events: {} as PracticeEvent,
-    input: {} as Partial<PracticeContext>,
+    input: {},
   },
   guards: {
     isCorrectPitch: ({ context, event }) => {

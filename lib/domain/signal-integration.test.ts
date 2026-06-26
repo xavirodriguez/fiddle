@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { PitchDetector } from '../pitch-detector';
 import { generateSyntheticViolinSignal } from './signal-tester';
 

@@ -14,14 +14,14 @@ export default tseslint.config(
   // ── Archivos ignorados ──────────────────────────────────────────
   {
     ignores: [
-      ".next/**",
-      "node_modules/**",
-      "dist/**",
-      "temp/**",
-      "docs/**",
-      "eslint.config.mjs",
-      "postcss.config.mjs",
-      "public/worklets/**",
+      '.next/**',
+      'node_modules/**',
+      'dist/**',
+      'temp/**',
+      'docs/**',
+      'eslint.config.mjs',
+      'postcss.config.mjs',
+      'public/worklets/**',
     ],
   },
 

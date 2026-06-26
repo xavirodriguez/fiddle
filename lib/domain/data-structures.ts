@@ -1,5 +1,4 @@
 import { type TechniqueMetrics } from '../technique-types';
-
 import { type Cents, type Hertz } from './musical-domain';
 
 /**
@@ -52,7 +51,7 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
  * 3. Cache-Friendly: Uses a simple circular index.
  */
 export class FixedRingBuffer<T> {
-  private readonly buffer: (T | undefined)[];
+  private readonly buffer: Array<T | undefined>;
   private head = 0;
   private size = 0;
 
