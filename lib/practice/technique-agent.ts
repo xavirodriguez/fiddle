@@ -5,6 +5,18 @@ import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structur
 import { type Observation, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
 
 /**
+ * SessionReport
+ *
+ * Summary of the practice session's technical performance.
+ */
+export interface SessionReport {
+  bestNote: string | null;
+  worstNote: string | null;
+  averageCentsDeviation: number;
+  totalNotesMatched: number;
+}
+
+/**
  * TechniqueAgent
  *
  * Analyzes a window of PitchFrames to extract musical technique insights.
@@ -18,6 +30,9 @@ export class TechniqueAgent {
   // Pre-allocated arrays for Simple-Statistics compatibility without per-frame allocation
   private readonly centsArray: Float64Array;
   private readonly rmsArray: Float64Array;
+
+  // Session-wide statistics
+  private readonly sessionNoteData = new Map<string, { sumCents: number; count: number }>();
 
   constructor(windowSize = 30) {
     this.windowSize = windowSize;
@@ -192,6 +207,24 @@ export class TechniqueAgent {
   }
 
   /**
+   * Compiles a recommendation based on session performance.
+   */
+  getRecommendation(): string {
+    const report = this.getSessionReport();
+    if (report.totalNotesMatched === 0) return 'Sigue practicando para obtener feedback.';
+
+    if (report.averageCentsDeviation < 5) {
+      return '¡Excelente afinación! Prueba a aumentar el tempo o trabajar en el vibrato.';
+    }
+
+    if (report.worstNote) {
+      return `Tu nota más desafiada es ${report.worstNote}. Intenta practicar escalas que la incluyan.`;
+    }
+
+    return 'Buen progreso. Mantén la estabilidad en las notas largas.';
+  }
+
+  /**
    * Manual linear regression slope for uniform sampling.
    */
   private calculateSlope(data: Float64Array): number {
@@ -216,8 +249,55 @@ export class TechniqueAgent {
     return (n * sumXY - sumX * sumY) / denominator;
   }
 
+  /**
+   * Records the result of a matched note to track session-wide progress.
+   */
+  recordNoteResult(noteName: string, avgCents: number): void {
+    const absCents = Math.abs(avgCents);
+    const existing = this.sessionNoteData.get(noteName) || { sumCents: 0, count: 0 };
+    existing.sumCents += absCents;
+    existing.count += 1;
+    this.sessionNoteData.set(noteName, existing);
+  }
+
+  /**
+   * Compiles a report of the current practice session.
+   */
+  getSessionReport(): SessionReport {
+    let bestNote: string | null = null;
+    let worstNote: string | null = null;
+    let minError = Infinity;
+    let maxError = -Infinity;
+    let totalCents = 0;
+    let totalCount = 0;
+
+    this.sessionNoteData.forEach((data, note) => {
+      const avgError = data.sumCents / data.count;
+      totalCents += data.sumCents;
+      totalCount += data.count;
+
+      if (avgError < minError) {
+        minError = avgError;
+        bestNote = note;
+      }
+
+      if (avgError > maxError) {
+        maxError = avgError;
+        worstNote = note;
+      }
+    });
+
+    return {
+      bestNote,
+      worstNote,
+      averageCentsDeviation: totalCount > 0 ? totalCents / totalCount : 0,
+      totalNotesMatched: totalCount,
+    };
+  }
+
   clear(): void {
     this.centsBuffer.clear();
     this.rmsBuffer.clear();
+    this.sessionNoteData.clear();
   }
 }
