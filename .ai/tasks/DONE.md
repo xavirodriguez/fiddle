@@ -26,3 +26,4 @@
 | 7.3 | Generador de Observaciones Musicales | ~20 |
 | 8.1 | Unificación de Stores y Persistencia Reactiva | ~50 |
 | 8.2 | Sistema de Versionado y Migración de Persistencia | ~30 |
+| 7.3 | Lógica de "Best Note" y "Most Difficult Note" | ~30 |
