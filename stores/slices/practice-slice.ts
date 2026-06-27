@@ -46,9 +46,6 @@ const INITIAL_PRACTICE_STATE: PracticeState = {
  *    RMS data never enter the Zustand store at 60 FPS. They are
  *    handled via refs and direct DOM manipulation (see FeedbackOverlay)
  *    to prevent React reconciliation pressure.
- * 3. Immutable Updates: Uses Immer via the Zustand middleware to ensure
- *    clean, readable state transitions while maintaining object reference
- *    integrity for optimized React re-renders.
  */
 export interface PracticeSlice {
   practiceState: PracticeState

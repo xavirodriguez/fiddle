@@ -21,10 +21,6 @@
  *    - Mitigation: All timing logic uses `Tone.now()` or `AudioContext.currentTime`.
  *    - Drift Source: Accumulative error in `currentTime += duration` during compilation.
  *    - Mitigation: Use absolute scheduling in Tone.Transport.
- *
- * Performance Metrics:
- * - Time Complexity: O(1) for `verify` via pointer-based lookup.
- * - Space Complexity: O(N) where N is the number of notes.
  */
 
 import { err,ok, type Result } from 'neverthrow'
@@ -98,13 +94,8 @@ export class TimelineSynchronizer {
 
       exercise.notes.forEach((note, index) => {
         const noteName = formatPitchName(note.pitch)
-        const noteResult = MusicalNote.tryFromName(noteName)
+        const musicalNote = MusicalNote.fromName(noteName)
 
-        if (noteResult.isErr()) {
-          throw noteResult.error
-        }
-
-        const musicalNote = noteResult.value
         const durationSeconds = note.duration * secondsPerBeat
 
         this.timeline.push({

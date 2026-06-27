@@ -9,7 +9,11 @@
 // Pitch
 // ---------------------------------------------------------------------------
 
-import { type NoteAlter } from './musical-domain'
+/**
+ * The alter (accidental) of a note.
+ * -1 = flat, 0 = natural, 1 = sharp
+ */
+export type NoteAlter = -1 | 0 | 1
 
 /** A single pitch in scientific pitch notation parts. */
 export interface Pitch {

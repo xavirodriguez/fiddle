@@ -4,18 +4,6 @@ import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structur
 import { type Observation, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
 
 /**
- * SessionReport
- *
- * Summary of the practice session's technical performance.
- */
-export interface SessionReport {
-  bestNote: string | null;
-  worstNote: string | null;
-  averageCentsDeviation: number;
-  totalNotesMatched: number;
-}
-
-/**
  * TechniqueAgent
  *
  * Analyzes a window of PitchFrames to extract musical technique insights.
@@ -30,9 +18,6 @@ export class TechniqueAgent {
   // Pre-allocated arrays for single-pass analysis
   private readonly centsArray: Float64Array;
   private readonly rmsArray: Float64Array;
-
-  // Session-wide statistics
-  private readonly sessionNoteData = new Map<string, { sumCents: number; count: number }>();
 
   constructor(windowSize = 30) {
     this.windowSize = windowSize;
@@ -157,6 +142,5 @@ export class TechniqueAgent {
   clear(): void {
     this.centsBuffer.clear();
     this.rmsBuffer.clear();
-    this.sessionNoteData.clear();
   }
 }

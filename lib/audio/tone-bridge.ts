@@ -9,17 +9,17 @@
  *    from AudioManager. This ensures that the metronome, accompaniment,
  *    and DSP pipeline (pitch detection) all reference the exact same
  *    hardware clock, eliminating drift over time.
- * 2. Nominal Typing (Branding): We use intersection types with a unique
- *    brand property to ensure that Seconds and BPM are not interchangeable
- *    with raw numbers. This prevents unit-mixing errors (e.g. adding BPM to Seconds).
+ * 2. Nominal Typing: Branded types for Seconds and BPM to prevent
+ *    mathematical errors in scheduling (e.g., adding BPM to Seconds).
  * 3. Idempotency: Tone.setContext and Tone.getTransport().context assignment
  *    are protected to avoid redundant re-initialization which can cause
  *    audible glitches or scheduling resets.
  * 4. Functional Error Handling: Uses `neverthrow` to manage initialization
- *    results, forcing callers to explicitly handle hardware failures.
+ *    results, forcing callers to explicitly handle cases where hardware
+ *    initialization might fail (e.g., user denied microphone access).
  */
 
-import { err, ok, type Result } from 'neverthrow'
+import { err,ok, type Result } from 'neverthrow'
 import * as Tone from 'tone'
 
 import { AppError, ERROR_CODES } from '@/lib/errors/app-error'
@@ -57,10 +57,9 @@ export class ToneBridge {
    * MUST be called after AudioManager.initialize().
    *
    * Architectural Decisions:
-   * 1. Sharing Context: Prevents audio clock drift between different engines.
-   * 2. Context State Management: Automatically resumes suspended contexts.
-   * 3. Sample-Accurate Scheduling: Setting Tone.getTransport().context is
-   *    mandatory for precision timing.
+   * 1. Sharing Context: Prevents audio clock drift and resource contention.
+   * 2. Idempotency: Multiple calls are safe; initialization happens once.
+   * 3. Nominal Typing: Branded types prevent mixing BPM/Seconds with raw numbers.
    */
   static async initialize(): Promise<Result<void, AppError>> {
     const nativeContext = audioManager.getContext()
@@ -81,15 +80,16 @@ export class ToneBridge {
         const toneContext = new Tone.Context(nativeContext)
         Tone.setContext(toneContext)
 
-        // Critical: Ensure the transport uses the same clock for sample-accurate scheduling
-        // @ts-ignore - Transport context must be set manually for full synchronization
+        // Ensure the transport is synchronized with the context
+        // This is critical for sample-accurate scheduling
+        // @ts-ignore - Transport context is sometimes typed as read-only but must be set here
         Tone.getTransport().context = toneContext
 
         this.isInitialized = true
         console.info('[ToneBridge] Tone.js successfully synchronized with native AudioContext.')
       }
 
-      // Browser policy: Resume context on user interaction
+      // Resume context if suspended (required by browser policies)
       if (nativeContext.state === 'suspended') {
         await Tone.start()
       }
@@ -106,21 +106,21 @@ export class ToneBridge {
   }
 
   /**
-   * Returns the current time in seconds from the shared audio clock.
+   * Returns the current time in seconds according to the shared audio clock.
    */
   static getCurrentTime(): Seconds {
     return makeSeconds(Tone.now())
   }
 
   /**
-   * Updates the global transport BPM using nominal BPM type.
+   * Updates the global transport BPM using the nominal BPM type.
    */
   static setBpm(bpm: BPM): void {
     Tone.getTransport().bpm.value = bpm
   }
 
   /**
-   * Resets the bridge state for testing purposes.
+   * Resets the bridge state. Useful for testing.
    */
   static _reset(): void {
     this.isInitialized = false
