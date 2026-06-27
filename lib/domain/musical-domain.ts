@@ -20,6 +20,12 @@ export type Cents = number & { readonly __brand: 'Cents' };
 export type MidiNote = number & { readonly __brand: 'MidiNote' };
 
 /**
+ * El alter (accidental) de una nota.
+ * -1 = flat, 0 = natural, 1 = sharp
+ */
+export type NoteAlter = -1 | 0 | 1;
+
+/**
  * Esquemas de Validación (Zod)
  */
 const HertzSchema = z.number().finite().min(0); // Hercios deben ser no negativos
@@ -72,6 +78,20 @@ export function makeMidiNote(value: number): Result<MidiNote, AppError> {
     }));
   }
   return ok(value as MidiNote);
+}
+
+/**
+ * Normaliza y valida un alter (accidental).
+ */
+export function normalizeAccidental(alter: number | undefined): Result<NoteAlter, AppError> {
+  const value = alter ?? 0;
+  if (value === -1 || value === 0 || value === 1) {
+    return ok(value as NoteAlter);
+  }
+  return err(new AppError({
+    message: `Alter inválido: ${alter}. Debe ser -1, 0 o 1.`,
+    code: ERROR_CODES.DATA_VALIDATION_ERROR,
+  }));
 }
 
 /**
