@@ -1,5 +1,4 @@
 import { CircularBuffer } from 'mnemonist';
-import * as ss from 'simple-statistics';
 
 import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structures';
 import { type Observation, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
@@ -217,8 +216,9 @@ export class TechniqueAgent {
       return '¡Excelente afinación! Prueba a aumentar el tempo o trabajar en el vibrato.';
     }
 
-    if (report.worstNote) {
-      return `Tu nota más desafiada es ${report.worstNote}. Intenta practicar escalas que la incluyan.`;
+    const worstNote = report.worstNote ?? '';
+    if (worstNote) {
+      return `Tu nota más desafiada es ${worstNote}. Intenta practicar escalas que la incluyan.`;
     }
 
     return 'Buen progreso. Mantén la estabilidad en las notas largas.';
@@ -254,7 +254,7 @@ export class TechniqueAgent {
    */
   recordNoteResult(noteName: string, avgCents: number): void {
     const absCents = Math.abs(avgCents);
-    const existing = this.sessionNoteData.get(noteName) || { sumCents: 0, count: 0 };
+    const existing = this.sessionNoteData.get(noteName) ?? { sumCents: 0, count: 0 };
     existing.sumCents += absCents;
     existing.count += 1;
     this.sessionNoteData.set(noteName, existing);

@@ -82,11 +82,10 @@ export class ToneBridge {
         Tone.setContext(toneContext)
 
         // Critical: Ensure the transport uses the same clock for sample-accurate scheduling
-        // @ts-ignore - Transport context must be set manually for full synchronization
+        // @ts-expect-error - Transport context must be set manually for full synchronization in this version of Tone.js
         Tone.getTransport().context = toneContext
 
         this.isInitialized = true
-        console.info('[ToneBridge] Tone.js successfully synchronized with native AudioContext.')
       }
 
       // Browser policy: Resume context on user interaction

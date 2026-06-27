@@ -93,7 +93,7 @@ export function createTunerStream(
         SHARED_PITCH_FRAME.frequency = 0 as Hertz
         SHARED_PITCH_FRAME.centsDeviation = 0 as Cents
         SHARED_PITCH_FRAME.confidence = 0
-        SHARED_PITCH_FRAME.timestamp = audioCtx!.currentTime
+        SHARED_PITCH_FRAME.timestamp = audioCtx?.currentTime ?? 0
         subscriber.next(SHARED_PITCH_FRAME)
         rafId = requestAnimationFrame(loop)
         return
@@ -101,7 +101,7 @@ export function createTunerStream(
 
       const [frequency, confidence] = detector.findPitch(
         inputBuffer,
-        audioCtx!.sampleRate
+        audioCtx?.sampleRate ?? 44100
       )
 
       if (confidence < CONFIDENCE_THRESHOLD) {
@@ -131,7 +131,7 @@ export function createTunerStream(
       SHARED_PITCH_FRAME.frequency = frequency as Hertz
       SHARED_PITCH_FRAME.centsDeviation = cents
       SHARED_PITCH_FRAME.confidence = confidence
-      SHARED_PITCH_FRAME.timestamp = audioCtx!.currentTime
+      SHARED_PITCH_FRAME.timestamp = audioCtx?.currentTime ?? 0
 
       subscriber.next(SHARED_PITCH_FRAME)
       rafId = requestAnimationFrame(loop)

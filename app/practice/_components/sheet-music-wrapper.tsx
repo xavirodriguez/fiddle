@@ -21,7 +21,7 @@
  */
 
 import { OpenSheetMusicDisplay } from 'opensheetmusicdisplay'
-import React, { useCallback,useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 
 // ---------------------------------------------------------------------------
 // Types

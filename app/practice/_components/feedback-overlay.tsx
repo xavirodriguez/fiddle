@@ -35,14 +35,6 @@ const BAR_HALF_WIDTH = 50
 /** Maximum cents deviation shown on the bar before it clips to the edge. */
 const DISPLAY_RANGE_CENTS = 50
 
-/**
- * CSS custom property names used to drive the animated elements.
- * String constants avoid repeated allocation of identical strings.
- */
-const PROP_INDICATOR_X    = '--indicator-x'
-const PROP_BAR_COLOR      = '--bar-color'
-const PROP_BAR_OPACITY    = '--bar-opacity'
-
 /** Color tokens matching globals.css */
 const COLOR_IN_TUNE   = '#22c55e'   // green-500 — within tolerance
 const COLOR_SHARP     = '#e03434'   // needle-hot red — too sharp
@@ -110,7 +102,6 @@ export function FeedbackOverlay() {
   // React state — only for visibility flags, changes rarely.
   // ------------------------------------------------------------------
   const [isSessionActive, setIsSessionActive] = useState(false)
-  const [hasSignal, setHasSignal] = useState(false)
 
   // ------------------------------------------------------------------
   // Subscribe to practice status via a primitive selector to avoid
@@ -134,11 +125,6 @@ export function FeedbackOverlay() {
       const cents      = s.cents      as number
       const confidence = s.confidence
       const frequency  = s.frequency  as number
-      const active     = s.active
-
-      // Update signal flag if it changed (rare — triggers React re-render).
-      const nowHasSignal = active && confidence >= 0.5
-      setHasSignal((prev) => (prev === nowHasSignal ? prev : nowHasSignal))
 
       // --- Hot path: direct DOM mutation, no React ---
 
