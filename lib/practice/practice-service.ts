@@ -8,12 +8,13 @@ import { audioPipeline, type RawPitchEvent } from '../audio/audio-pipeline'
 import { type Seconds,ToneBridge } from '../audio/tone-bridge'
 import { type MutablePitchFrame, type PitchFrame,SHARED_PITCH_FRAME } from '../domain/data-structures'
 import { type Exercise,type Note as TargetNote } from '../domain/exercise'
-import { type Cents, frequencyToMidiRaw,type Hertz } from '../domain/musical-domain'
+import { type Cents, frequencyToMidiRaw } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
 import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
 import { audioManager } from '../infrastructure/audio-manager'
 import { formatPitchName,MusicalNote } from '../practice-core'
+import { type Observation } from '../technique-types'
 import { type PracticeEvent,practiceMachine } from './practice-machine'
 import { type MusicalEvent,TimelineSynchronizer } from './timeline-synchronizer'
 
@@ -104,14 +105,16 @@ export class PracticeService {
     })
 
     // Schedule musical events in Tone.js Transport
-    void this.synchronizer.schedule((event) => {
+    this.synchronizer.schedule((event) => {
       if (this.onNoteTriggered) this.onNoteTriggered(event)
     })
   }
 
   stop() {
     this.actor.stop()
-    void this.audioAdapter.stopStream()
+    this.audioAdapter.stopStream().catch((error: unknown) => {
+      console.error('[PracticeService] stopStream failed:', error)
+    })
     toneAudioPlayer.stopAll()
   }
 

@@ -56,7 +56,7 @@ export class FixedRingBuffer<T> {
   private size = 0;
 
   constructor(public readonly maxSize: number) {
-    this.buffer = new Array(maxSize).fill(undefined);
+    this.buffer = new Array<T | undefined>(maxSize).fill(undefined);
   }
 
   /**
@@ -111,7 +111,7 @@ export class FixedRingBuffer<T> {
    * Allocates a new array.
    */
   toArray(): readonly T[] {
-    const result: T[] = new Array(this.size);
+    const result: T[] = new Array<T>(this.size);
     this.forEach((item, i) => {
       result[i] = item;
     });

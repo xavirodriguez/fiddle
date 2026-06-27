@@ -78,7 +78,7 @@ export function createTunerStream(
         SHARED_PITCH_FRAME.frequency = 0 as Hertz
         SHARED_PITCH_FRAME.centsDeviation = 0 as Cents
         SHARED_PITCH_FRAME.confidence = 0
-        SHARED_PITCH_FRAME.timestamp = audioCtx!.currentTime
+        SHARED_PITCH_FRAME.timestamp = audioCtx?.currentTime ?? 0
         subscriber.next(SHARED_PITCH_FRAME)
         rafId = requestAnimationFrame(loop)
         return
@@ -99,7 +99,7 @@ export function createTunerStream(
       SHARED_PITCH_FRAME.frequency = frequency as Hertz
       SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
       SHARED_PITCH_FRAME.confidence = confidence
-      SHARED_PITCH_FRAME.timestamp = audioCtx!.currentTime
+      SHARED_PITCH_FRAME.timestamp = audioCtx?.currentTime ?? 0
 
       subscriber.next(SHARED_PITCH_FRAME)
       rafId = requestAnimationFrame(loop)

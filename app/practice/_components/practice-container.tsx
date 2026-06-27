@@ -9,7 +9,7 @@
  */
 
 import dynamic from 'next/dynamic'
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 
 import { audioManager } from '@/lib/infrastructure/audio-manager'
 import { practiceService } from '@/lib/practice/practice-service'
@@ -64,7 +64,9 @@ export function PracticeContainer() {
         internalUpdate({ type: 'START' })
       }
     }
-    void toggle()
+    toggle().catch((error: unknown) => {
+      console.error('[PracticeContainer] Toggle play failed:', error)
+    })
   }
 
   function handleReset() {
@@ -78,9 +80,8 @@ export function PracticeContainer() {
     })
   }
 
-  function handleScoreReady(totalNotes: number) {
+  function handleScoreReady(_totalNotes: number) {
     // Reserved for future use: e.g. update store boundary, enable nav buttons.
-    void totalNotes
   }
 
   function handleScoreError(error: Error) {

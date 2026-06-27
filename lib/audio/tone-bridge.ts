@@ -86,7 +86,6 @@ export class ToneBridge {
         Tone.getTransport().context = toneContext
 
         this.isInitialized = true
-        console.info('[ToneBridge] Tone.js successfully synchronized with native AudioContext.')
       }
 
       // Resume context if suspended (required by browser policies)

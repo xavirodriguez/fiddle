@@ -90,8 +90,15 @@ export class WebAudioAdapter implements AudioCapturePort {
       if (initResult.isErr()) return initResult;
     }
 
-    const ctx = this.audioContext!;
-    const comp = this.compressor!;
+    if (!this.audioContext || !this.compressor) {
+      return err(new AppError({
+        message: 'AudioContext no inicializado',
+        code: ERROR_CODES.INTERNAL_ERROR,
+      }));
+    }
+
+    const ctx = this.audioContext;
+    const comp = this.compressor;
 
     // Reusable event object to avoid main-thread garbage
     const eventProxy: RawPitchEvent = {
@@ -158,10 +165,12 @@ export class WebAudioAdapter implements AudioCapturePort {
   }
 
   on(event: AudioDeviceEvent, callback: (data?: unknown) => void): void {
-    if (!this.eventCallbacks.has(event)) {
-      this.eventCallbacks.set(event, []);
+    let callbacks = this.eventCallbacks.get(event);
+    if (!callbacks) {
+      callbacks = [];
+      this.eventCallbacks.set(event, callbacks);
     }
-    this.eventCallbacks.get(event)!.push(callback);
+    callbacks.push(callback);
   }
 
   private emit(event: AudioDeviceEvent, data?: unknown): void {
@@ -172,10 +181,10 @@ export class WebAudioAdapter implements AudioCapturePort {
   }
 
   get sampleRate(): number {
-    return this.audioContext?.sampleRate || 44100;
+    return this.audioContext?.sampleRate ?? 44100;
   }
 
   getCurrentTime(): number {
-    return this.audioContext?.currentTime || 0;
+    return this.audioContext?.currentTime ?? 0;
   }
 }

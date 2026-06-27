@@ -1,15 +1,9 @@
 import { firstValueFrom } from 'rxjs'
-import { beforeEach,describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { AudioPipeline } from './audio-pipeline'
 
 describe('AudioPipeline', () => {
-  let pipeline: AudioPipeline;
-
-  beforeEach(() => {
-    pipeline = new AudioPipeline()
-  })
-
   it('should process frames and emit pitch events', async () => {
     const pipeline = new AudioPipeline()
 
@@ -37,7 +31,7 @@ describe('AudioPipeline', () => {
   it('should cleanup segmenter actor on destroy()', () => {
     const pipeline = new AudioPipeline()
     // Accessing private for test verification
-    const stopSpy = vi.spyOn((pipeline as any).segmenter, 'stop')
+    const stopSpy = vi.spyOn((pipeline as unknown as { segmenter: { stop: () => void } }).segmenter, 'stop')
 
     pipeline.destroy()
     expect(stopSpy).toHaveBeenCalled()

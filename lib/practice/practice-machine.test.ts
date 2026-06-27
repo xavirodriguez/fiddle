@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { createActor } from 'xstate'
 
 import { type PitchFrame } from '../domain/data-structures'
