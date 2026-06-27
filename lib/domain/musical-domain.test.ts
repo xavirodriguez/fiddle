@@ -27,7 +27,7 @@ describe('Musical Domain Nominal Types', () => {
       expect(result.isErr()).toBe(true)
       if (result.isErr()) {
         expect(result.error).toBeInstanceOf(AppError)
-        expect(result.error.message).toMatch(/Valor de Hertz inválido/)
+        expect(result.error.message).toMatch(/Invalid Hertz value/)
       }
     })
 
