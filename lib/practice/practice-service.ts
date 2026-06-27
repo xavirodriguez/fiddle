@@ -46,14 +46,40 @@ export class PracticeService {
       notifySuccess: () => {
         const store = useAppStore.getState()
         const detected = mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch || '')
+        const agent = audioPipeline.getTechniqueAgent();
 
-        // Generate observations for the matched note
+        // 1. Record session-wide precision
+        if (this.cachedTargetPitch) {
+          agent.recordNoteResult(this.cachedTargetPitch, SHARED_PITCH_FRAME.centsDeviation);
+        }
+
+        // 2. Generate observations for the matched note
         let observations: any[] = []
         if (SHARED_PITCH_FRAME.technique) {
-          observations = audioPipeline.getTechniqueAgent().generateObservations(
+          observations = agent.generateObservations(
             SHARED_PITCH_FRAME.technique,
             SHARED_PITCH_FRAME.timestamp
           )
+        }
+
+        // 3. Optional: Add session-wide feedback if many notes are matched
+        const report = agent.getSessionReport();
+        if (report.totalNotesMatched > 5) {
+          if (report.worstNote === this.cachedTargetPitch) {
+            observations.push({
+              category: 'intonation',
+              severity: 'info',
+              message: `Esta nota (${this.cachedTargetPitch}) suele ser difícil para ti.`,
+              timestamp: SHARED_PITCH_FRAME.timestamp,
+            });
+          } else if (report.bestNote === this.cachedTargetPitch) {
+            observations.push({
+              category: 'intonation',
+              severity: 'info',
+              message: `¡Excelente! ${this.cachedTargetPitch} es tu mejor nota en esta sesión.`,
+              timestamp: SHARED_PITCH_FRAME.timestamp,
+            });
+          }
         }
 
         store.internalUpdate({

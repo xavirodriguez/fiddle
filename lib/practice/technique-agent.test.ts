@@ -74,4 +74,30 @@ describe('TechniqueAgent', () => {
     metrics = agent.analyze(createFrame(0), 0.1, 0, 0);
     expect(metrics?.rmsStability).toBeLessThan(1);
   });
+
+  it('should track session statistics and generate report', () => {
+    agent.recordNoteResult('A4', 2);
+    agent.recordNoteResult('A4', 4);
+    agent.recordNoteResult('G3', 10);
+    agent.recordNoteResult('G3', 20);
+
+    const report = agent.getSessionReport();
+    expect(report.totalNotesMatched).toBe(4);
+    expect(report.bestNote).toBe('A4'); // avg 3
+    expect(report.worstNote).toBe('G3'); // avg 15
+    expect(report.averageCentsDeviation).toBe(9); // (2+4+10+20)/4
+  });
+
+  it('should generate intelligent recommendations', () => {
+    // No data
+    expect(agent.getRecommendation()).toContain('Sigue practicando');
+
+    // Perfect intonation
+    agent.recordNoteResult('A4', 2);
+    expect(agent.getRecommendation()).toContain('¡Excelente afinación!');
+
+    // Specific note issues
+    agent.recordNoteResult('G3', 20);
+    expect(agent.getRecommendation()).toContain('Tu nota más desafiada es G3');
+  });
 });

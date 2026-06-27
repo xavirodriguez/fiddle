@@ -1,9 +1,9 @@
 import { err,ok, type Result } from 'neverthrow';
 
 import { type RawPitchEvent } from '../../audio/audio-pipeline';
-import { type WorkerInputMessage,type WorkerOutputMessage } from './pitch-worker.types';
 import { AppError, ERROR_CODES } from '../../errors/app-error';
 import { type AudioCapturePort, type AudioDeviceEvent } from '../../ports/audio.port';
+import { type WorkerInputMessage,type WorkerOutputMessage } from './pitch-worker.types';
 
 /**
  * WebAudioAdapter
