@@ -14,9 +14,7 @@
  */
 
 import { useEffect, useRef } from 'react'
-import type { Subscription } from 'rxjs'
 
-import type { PitchFrame } from '@/lib/domain/data-structures'
 import {
   selectActive,
   selectError,
@@ -46,7 +44,13 @@ const IN_TUNE_THRESHOLD = 8
 
 /** Clamps x to [min, max]. */
 function clamp(x: number, min: number, max: number): number {
-  return x < min ? min : x > max ? max : x
+  if (x < min) {
+    return min
+  }
+  if (x > max) {
+    return max
+  }
+  return x
 }
 
 /** Converts cents deviation to needle tip x/y coordinates. */
@@ -77,73 +81,88 @@ function freqToMidiFractional(hz: number): number {
   return 12 * Math.log2(hz / 440) + 69
 }
 
+function updateNeedle(
+  needle: SVGLineElement | null,
+  dot: SVGCircleElement | null,
+  x: number,
+  y: number,
+  inTune: boolean,
+) {
+  if (!needle || !dot) return
+
+  const color = inTune ? 'var(--color-accent)' : 'var(--color-needle-hot)'
+  needle.setAttribute('x2', x.toFixed(2))
+  needle.setAttribute('y2', y.toFixed(2))
+  needle.setAttribute('stroke', color)
+  dot.setAttribute('fill', color)
+}
+
+function updateReadouts(
+  centsText: SVGTextElement | null,
+  noteText: SVGTextElement | null,
+  cents: number,
+  frequency: number,
+) {
+  if (centsText) {
+    const sign = cents > 0 ? '+' : ''
+    centsText.textContent = `${sign}${cents.toFixed(1)} ¢`
+  }
+  if (noteText) {
+    const midi = freqToMidiFractional(frequency)
+    noteText.textContent = midiToNoteName(midi)
+  }
+}
+
+function resetNeedle(
+  needle: SVGLineElement | null,
+  dot: SVGCircleElement | null,
+  centsText: SVGTextElement | null,
+  noteText: SVGTextElement | null,
+) {
+  const { x, y } = centsToXY(0)
+  if (needle) {
+    needle.setAttribute('x2', x.toFixed(2))
+    needle.setAttribute('y2', y.toFixed(2))
+    needle.setAttribute('stroke', 'var(--color-needle-idle)')
+  }
+  if (dot) {
+    dot.setAttribute('fill', 'var(--color-needle-idle)')
+  }
+  if (centsText) centsText.textContent = '— ¢'
+  if (noteText) noteText.textContent = '—'
+}
+
 export function TunerDial() {
   const { start, stop } = useAppStore()
-  const active  = useAppStore(selectActive)
-  const error   = useAppStore(selectError)
+  const active = useAppStore(selectActive)
+  const error = useAppStore(selectError)
 
-  // Refs to DOM nodes updated imperatively in the hot path.
-  const needleRef    = useRef<SVGLineElement>(null)
+  const needleRef = useRef<SVGLineElement>(null)
   const centsTextRef = useRef<SVGTextElement>(null)
-  const noteTextRef  = useRef<SVGTextElement>(null)
-  const dotRef       = useRef<SVGCircleElement>(null)
+  const noteTextRef = useRef<SVGTextElement>(null)
+  const dotRef = useRef<SVGCircleElement>(null)
 
-  // Subscribe to the tuner stream directly from the store's RxJS pipeline
-  // via a thin effect that reads from Zustand on every frame.
-  // We wire a separate RAF loop that reads from Zustand state to keep things
-  // decoupled and avoid importing the stream here.
   useEffect(() => {
     if (!active) return
 
     let rafId = 0
     let lastCents = 0
 
-    // Read the latest Zustand state imperatively — no subscription needed.
     function tick() {
       const s = useAppStore.getState()
-      const cents      = s.cents
-      const frequency  = s.frequency
-      const confidence = s.confidence
+      const { cents, frequency, confidence } = s
 
-      // Only paint if we have a valid signal.
       if (frequency > 0 && confidence > 0.85) {
         const { x, y } = centsToXY(cents)
-        const inTune   = Math.abs(cents) <= IN_TUNE_THRESHOLD
+        const inTune = Math.abs(cents) <= IN_TUNE_THRESHOLD
 
-        needleRef.current?.setAttribute('x2', x.toFixed(2))
-        needleRef.current?.setAttribute('y2', y.toFixed(2))
-        needleRef.current?.setAttribute(
-          'stroke',
-          inTune ? 'var(--color-accent)' : 'var(--color-needle-hot)'
-        )
-
-        dotRef.current?.setAttribute(
-          'fill',
-          inTune ? 'var(--color-accent)' : 'var(--color-needle-hot)'
-        )
-
-        const sign = cents > 0 ? '+' : ''
-        if (centsTextRef.current) {
-          centsTextRef.current.textContent = `${sign}${cents.toFixed(1)} ¢`
-        }
-        if (noteTextRef.current) {
-          const midi = freqToMidiFractional(frequency)
-          noteTextRef.current.textContent = midiToNoteName(midi)
-        }
+        updateNeedle(needleRef.current, dotRef.current, x, y, inTune)
+        updateReadouts(centsTextRef.current, noteTextRef.current, cents, frequency)
 
         lastCents = cents
-      } else {
-        // Return needle to centre when silent.
-        if (lastCents !== 0) {
-          const { x, y } = centsToXY(0)
-          needleRef.current?.setAttribute('x2', x.toFixed(2))
-          needleRef.current?.setAttribute('y2', y.toFixed(2))
-          needleRef.current?.setAttribute('stroke', 'var(--color-needle-idle)')
-          dotRef.current?.setAttribute('fill', 'var(--color-needle-idle)')
-          if (centsTextRef.current) centsTextRef.current.textContent = '— ¢'
-          if (noteTextRef.current) noteTextRef.current.textContent = '—'
-          lastCents = 0
-        }
+      } else if (lastCents !== 0) {
+        resetNeedle(needleRef.current, dotRef.current, centsTextRef.current, noteTextRef.current)
+        lastCents = 0
       }
 
       rafId = requestAnimationFrame(tick)
@@ -244,6 +263,15 @@ export function TunerDial() {
             const angleRad = (((c / 50) * SWING_DEG - 90) * Math.PI) / 180
             const lx = CX + 62 * Math.cos(angleRad)
             const ly = CY + 62 * Math.sin(angleRad)
+            let labelText: string
+            if (c === 0) {
+              labelText = '0'
+            } else if (c > 0) {
+              labelText = `+${c}`
+            } else {
+              labelText = String(c)
+            }
+
             return (
               <text
                 key={c}
@@ -255,7 +283,7 @@ export function TunerDial() {
                 fill="var(--color-dial-label)"
                 fontFamily="var(--font-mono)"
               >
-                {c === 0 ? '0' : c > 0 ? `+${c}` : c}
+                {labelText}
               </text>
             )
           })}

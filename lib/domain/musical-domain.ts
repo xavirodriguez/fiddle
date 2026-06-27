@@ -86,7 +86,7 @@ export function makeMidiNote(value: number): Result<MidiNote, AppError> {
 export function normalizeAccidental(alter: number | undefined): Result<NoteAlter, AppError> {
   const value = alter ?? 0;
   if (value === -1 || value === 0 || value === 1) {
-    return ok(value as NoteAlter);
+    return ok(value);
   }
   return err(new AppError({
     message: `Alter inválido: ${alter}. Debe ser -1, 0 o 1.`,

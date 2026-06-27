@@ -12,7 +12,6 @@ import type { Note as TargetNote } from '@/lib/domain/exercise'
 import type {
   DetectedNote,
   LoopRegion,
-  MetronomeConfig,
   PracticeEvent,
   PracticeState,
   PracticeStatus,
@@ -44,16 +43,9 @@ export type {
 }
 
 /**
- * A valid note name in scientific pitch notation.
- *
- * @example "C4", "F#5", "Bb3"
- */
-export type NoteName = string
-
-/**
  * Validates note name format using neverthrow.
  */
-export function validateNoteName(name: string): Result<NoteName, AppError> {
+export function validateNoteName(name: string): Result<string, AppError> {
   const noteRegex = /^[A-G](?:b{1,2}|#{1,2})?[0-8]$/
   const isValid = noteRegex.test(name)
 
@@ -72,7 +64,7 @@ export function validateNoteName(name: string): Result<NoteName, AppError> {
 /**
  * Legacy assertion for compatibility.
  */
-export function assertValidNoteName(name: string): asserts name is NoteName {
+export function assertValidNoteName(name: string): asserts name is string {
   const result = validateNoteName(name)
   if (result.isErr()) {
     throw result.error
@@ -163,9 +155,10 @@ export class MusicalNote {
    * @param fullName - A valid note name (e.g., "C4", "F#5", "Bb3")
    * @returns A Result with MusicalNote instance
    */
-  static tryFromName(fullName: NoteName): Result<MusicalNote, AppError> {
+  static tryFromName(fullName: string): Result<MusicalNote, AppError> {
     return validateNoteName(fullName).andThen((validName) => {
-      const match = (validName).match(/^([A-G])(b{1,2}|#{1,2})?([0-8])$/)
+      const noteRegex = /^([A-G])(b{1,2}|#{1,2})?([0-8])$/
+      const match = noteRegex.exec(validName)
       if (!match) {
         return err(
           new AppError({
@@ -187,7 +180,7 @@ export class MusicalNote {
   /**
    * Legacy method for compatibility.
    */
-  static fromName(fullName: NoteName): MusicalNote {
+  static fromName(fullName: string): MusicalNote {
     const result = MusicalNote.tryFromName(fullName)
     if (result.isErr()) {
       throw result.error
@@ -195,7 +188,7 @@ export class MusicalNote {
     return result.value
   }
 
-  get nameWithOctave(): NoteName {
+  get nameWithOctave(): string {
     const result = `${this.noteName}${this.octave}`
     assertValidNoteName(result)
     return result
@@ -213,7 +206,7 @@ function validateFrequency(frequency: number): void {
 /**
  * Converts a `TargetNote`'s pitch into a standard, parsable note name string.
  */
-export function formatPitchName(pitch: TargetNote['pitch']): NoteName {
+export function formatPitchName(pitch: TargetNote['pitch']): string {
   const alterResult = normalizeAccidental(pitch.alter)
   if (alterResult.isErr()) throw alterResult.error
   const canonicalAlter = alterResult.value
@@ -268,135 +261,128 @@ export function isMatch(params: {
 export function reducePracticeEvent(state: PracticeState, event: PracticeEvent): PracticeState {
   return produce(state, (draft) => {
     switch (event.type) {
-      case 'START': {
-        const payload = (event).payload
-        draft.status = 'listening'
-        draft.currentIndex = payload?.startIndex ?? 0
-        draft.detectionHistory = []
-        draft.holdDuration = 0
-        draft.lastObservations = []
-        draft.perfectNoteStreak = 0
+      case 'START':
+        handleStart(draft, event.payload)
         break
-      }
       case 'STOP':
-      case 'RESET': {
-        draft.status = 'idle'
-        draft.currentIndex = 0
-        draft.detectionHistory = []
-        draft.holdDuration = 0
-        draft.lastObservations = []
-        draft.perfectNoteStreak = 0
+      case 'RESET':
+        handleStop(draft)
         break
-      }
-      case 'NOTE_DETECTED': {
-        const payload = event.payload
-
-        // Zero-Allocation in-place update of detection history using pre-allocated RingBuffer
-        DETECTION_HISTORY_BUFFER.push(payload)
-
-        // Update the draft array in-place to avoid re-allocation
-        if (!draft.detectionHistory) {
-          draft.detectionHistory = []
-        }
-
-        // Update the draft array in-place to avoid re-allocation using Zero-Allocation iteration
-        draft.detectionHistory.length = DETECTION_HISTORY_BUFFER.length
-        DETECTION_HISTORY_BUFFER.forEach((item, i) => {
-          draft.detectionHistory[i] = castDraft(item)
-        })
-
-        if (draft.status === 'correct') {
-          draft.status = 'listening'
-        }
-        if (draft.status === 'listening') {
-          draft.holdDuration = 0
-        }
+      case 'NOTE_DETECTED':
+        handleNoteDetected(draft, event.payload)
         break
-      }
-      case 'HOLDING_NOTE': {
-        const payload = (event).payload
-        if (draft.status === 'listening' || draft.status === 'validating') {
-          draft.status = 'validating'
-          draft.holdDuration = payload.duration
-        }
+      case 'HOLDING_NOTE':
+        handleHoldingNote(draft, event.payload)
         break
-      }
-      case 'NO_NOTE_DETECTED': {
-        if (draft.status === 'validating') {
-          draft.status = 'listening'
-          draft.holdDuration = 0
-        }
+      case 'NO_NOTE_DETECTED':
+        handleNoNoteDetected(draft)
         break
-      }
-      case 'NOTE_MATCHED': {
-        const payload = (event).payload
-        if (draft.status === 'listening' || draft.status === 'validating') {
-          const centsError = draft.detectionHistory[0] ? Math.abs(draft.detectionHistory[0].cents) : 100
-          const isPerfect = payload?.isPerfect ?? centsError < 5
-          draft.perfectNoteStreak = isPerfect ? draft.perfectNoteStreak + 1 : 0
-          draft.lastObservations = payload?.observations ?? []
-
-          // Loop Handling
-          if (draft.loopRegion?.isEnabled) {
-            const isAtEndOfLoop = draft.currentIndex >= draft.loopRegion.endNoteIndex
-            if (isAtEndOfLoop) {
-              const { drillTarget, isLoopCompleted } = evaluateDrillTarget(draft.loopRegion, payload)
-              draft.loopRegion.drillTarget = drillTarget
-              if (isLoopCompleted) {
-                draft.status = 'completed'
-                draft.holdDuration = 0
-                return // Important: Exit the reducer to prevent fall-through
-              } else {
-                draft.currentIndex = draft.loopRegion.startNoteIndex
-                draft.status = 'correct'
-                draft.detectionHistory = []
-                draft.holdDuration = 0
-                return // Important: Exit the reducer to prevent fall-through
-              }
-            }
-          }
-
-          // Standard advancement
-          const isLastNote = draft.currentIndex >= draft.exercise.notes.length - 1
-          if (isLastNote) {
-            draft.status = 'completed'
-            draft.holdDuration = 0
-          } else {
-            draft.currentIndex++
-            draft.status = 'correct'
-            draft.detectionHistory = []
-            draft.holdDuration = 0
-          }
-        }
+      case 'NOTE_MATCHED':
+        handleNoteMatched(draft, event.payload)
         break
-      }
-      case 'JUMP_TO_NOTE': {
-        const payload = (event).payload
-        const totalNotes = draft.exercise.notes.length
-        draft.currentIndex = Math.max(0, Math.min(payload.index, totalNotes - 1))
-        if (draft.status === 'completed') {
-          draft.status = 'listening'
-        }
-        draft.holdDuration = 0
-        draft.detectionHistory = []
+      case 'JUMP_TO_NOTE':
+        handleJumpToNote(draft, event.payload)
         break
-      }
-      case 'UPDATE_METRONOME': {
-        const payload = (event).payload
-        if (draft.metronome) {
-          Object.assign(draft.metronome, payload)
-        }
+      case 'UPDATE_METRONOME':
+        if (draft.metronome) Object.assign(draft.metronome, event.payload)
         break
-      }
-      case 'UPDATE_LOOP_REGION': {
-        const payload = (event).payload
-        if (draft.loopRegion) {
-          Object.assign(draft.loopRegion, payload)
-        }
+      case 'UPDATE_LOOP_REGION':
+        if (draft.loopRegion) Object.assign(draft.loopRegion, event.payload)
         break
-      }
     }
   })
+}
+
+function handleStart(draft: PracticeState, payload?: { startIndex?: number }) {
+  draft.status = 'listening'
+  draft.currentIndex = payload?.startIndex ?? 0
+  draft.detectionHistory = []
+  draft.holdDuration = 0
+  draft.lastObservations = []
+  draft.perfectNoteStreak = 0
+}
+
+function handleStop(draft: PracticeState) {
+  draft.status = 'idle'
+  draft.currentIndex = 0
+  draft.detectionHistory = []
+  draft.holdDuration = 0
+  draft.lastObservations = []
+  draft.perfectNoteStreak = 0
+}
+
+function handleNoteDetected(draft: PracticeState, payload: DetectedNote) {
+  DETECTION_HISTORY_BUFFER.push(payload)
+  if (!draft.detectionHistory) draft.detectionHistory = []
+  draft.detectionHistory.length = DETECTION_HISTORY_BUFFER.length
+  DETECTION_HISTORY_BUFFER.forEach((item, i) => {
+    draft.detectionHistory[i] = castDraft(item)
+  })
+  if (draft.status === 'correct') draft.status = 'listening'
+  if (draft.status === 'listening') draft.holdDuration = 0
+}
+
+function handleHoldingNote(draft: PracticeState, payload: { duration: number }) {
+  if (draft.status === 'listening' || draft.status === 'validating') {
+    draft.status = 'validating'
+    draft.holdDuration = payload.duration
+  }
+}
+
+function handleNoNoteDetected(draft: PracticeState) {
+  if (draft.status === 'validating') {
+    draft.status = 'listening'
+    draft.holdDuration = 0
+  }
+}
+
+function handleNoteMatched(
+  draft: PracticeState,
+  payload?: { isPerfect: boolean; observations?: Observation[] },
+) {
+  if (draft.status !== 'listening' && draft.status !== 'validating') return
+
+  const centsError = draft.detectionHistory[0] ? Math.abs(draft.detectionHistory[0].cents) : 100
+  const isPerfect = payload?.isPerfect ?? centsError < 5
+  draft.perfectNoteStreak = isPerfect ? draft.perfectNoteStreak + 1 : 0
+  draft.lastObservations = payload?.observations ?? []
+
+  if (draft.loopRegion?.isEnabled) {
+    const isAtEndOfLoop = draft.currentIndex >= draft.loopRegion.endNoteIndex
+    if (isAtEndOfLoop) {
+      const { drillTarget, isLoopCompleted } = evaluateDrillTarget(draft.loopRegion, payload)
+      draft.loopRegion.drillTarget = drillTarget
+      if (isLoopCompleted) {
+        draft.status = 'completed'
+        draft.holdDuration = 0
+      } else {
+        draft.currentIndex = draft.loopRegion.startNoteIndex
+        draft.status = 'correct'
+        draft.detectionHistory = []
+        draft.holdDuration = 0
+      }
+      return
+    }
+  }
+
+  const isLastNote = draft.currentIndex >= draft.exercise.notes.length - 1
+  if (isLastNote) {
+    draft.status = 'completed'
+    draft.holdDuration = 0
+  } else {
+    draft.currentIndex++
+    draft.status = 'correct'
+    draft.detectionHistory = []
+    draft.holdDuration = 0
+  }
+}
+
+function handleJumpToNote(draft: PracticeState, payload: { index: number }) {
+  const totalNotes = draft.exercise.notes.length
+  draft.currentIndex = Math.max(0, Math.min(payload.index, totalNotes - 1))
+  if (draft.status === 'completed') draft.status = 'listening'
+  draft.holdDuration = 0
+  draft.detectionHistory = []
 }
 
 /**
@@ -405,7 +391,7 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
  */
 function evaluateDrillTarget(
   loopRegion: LoopRegion,
-  payload: { isPerfect: boolean; observations?: Observation[] },
+  payload?: { isPerfect: boolean; observations?: Observation[] },
 ) {
   const drillTarget = loopRegion.drillTarget
   if (!drillTarget) {

@@ -1,6 +1,6 @@
 import * as Tone from 'tone'
 
-import { BPM,type Seconds, ToneBridge } from '../../audio/tone-bridge'
+import { type Seconds, ToneBridge } from '../../audio/tone-bridge'
 import { type AudioPlayerPort } from '../../ports/audio-player.port'
 
 /**
@@ -13,9 +13,7 @@ export class ToneAudioPlayer implements AudioPlayerPort {
   private clickLoop: Tone.Loop | null = null
 
   private get synth(): Tone.PolySynth {
-    if (!this._synth) {
-      this._synth = new Tone.PolySynth(Tone.Synth).toDestination()
-    }
+    this._synth ??= new Tone.PolySynth(Tone.Synth).toDestination()
     return this._synth
   }
 
@@ -30,7 +28,7 @@ export class ToneAudioPlayer implements AudioPlayerPort {
 
   /**
    * Starts a metronome click loop.
-   * @param bpm Beats per minute.
+   * @param bpm - Beats per minute.
    */
   startMetronome(bpm: number): void {
     if (this.clickLoop) {

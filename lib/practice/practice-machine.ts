@@ -28,11 +28,17 @@ const _context: PracticeContext = {
   errorCount: 0,
 }
 
+const _events: PracticeEvent = { type: 'STOP' }
+
 export const practiceMachine = setup({
   types: {
-    context: {} as PracticeContext,
-    events: {} as PracticeEvent,
-    input: {},
+    context: ({} as unknown as PracticeContext),
+    events: ({} as unknown as PracticeEvent),
+    input: ({} as unknown as {
+      targetMidi?: number;
+      toleranceCents?: number;
+      requiredHoldTime?: number;
+    }),
   },
   guards: {
     isCorrectPitch: ({ context, event }) => {

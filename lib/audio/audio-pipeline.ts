@@ -27,7 +27,7 @@ export interface RawPitchEvent {
  *
  * Manages the reactive flow of pitch events using RxJS.
  * Optimized for Zero Allocation.
- * Flow: RawPitchEvent -> NoteSegmenter -> Agent -> EventSink
+ * Flow: RawPitchEvent \> NoteSegmenter \> Agent \> EventSink
  */
 export class AudioPipeline {
   private inputSubject = new Subject<RawPitchEvent>()

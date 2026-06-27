@@ -29,10 +29,12 @@ const _context: NoteSegmenterContext = {
   minFramesForNote: 2,
 }
 
+const _events: NoteSegmenterEvent = { type: 'PITCH_LOST' }
+
 export const noteSegmenterMachine = setup({
   types: {
-    context: {} as NoteSegmenterContext,
-    events: {} as NoteSegmenterEvent,
+    context: ({} as unknown as NoteSegmenterContext),
+    events: ({} as unknown as NoteSegmenterEvent),
   },
   actions: {
     resetCounter: assign({

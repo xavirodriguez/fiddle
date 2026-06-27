@@ -67,7 +67,7 @@ export function validateAndMerge<T>(
     merge?: (persisted: T, current: T) => T
   },
 ): T {
-  const isMissing = persistedState == undefined
+  const isMissing = persistedState === null || persistedState === undefined
   if (isMissing) {
     return currentState
   }
@@ -84,8 +84,6 @@ function executeValidationAndMerge<T>(params: {
   const { schema, persistedState, currentState, options } = params
   try {
     const validated = schema.parse(persistedState)
-    const logMsg = `[Persist] ✅ State validated for ${options.name}`
-    console.log(logMsg)
     return mergeState(validated, currentState, options.merge)
   } catch (validationError) {
     handleValidationError(options.name, validationError)
@@ -112,7 +110,7 @@ export async function saveAsync(key: string, data: unknown): Promise<void> {
 /**
  * Migrator function signature.
  */
-export type Migrator<T = any> = (data: any) => T
+export type Migrator<T = unknown> = (data: unknown) => T
 
 /**
  * Asynchronously loads data from local storage with versioning support.
@@ -133,18 +131,27 @@ export async function loadAsync<T>(
         return
       }
       try {
-        const decompressed = decompressAndDeserialize(val) as any
-        let data = decompressed
+        const decompressed = decompressAndDeserialize(val)
+        let data: unknown = decompressed
 
         // Handle versioned migrations
-        const currentVersion = data?.__version ?? 0
+        let currentVersion = 0
+        if (
+          typeof data === 'object' &&
+          data !== null &&
+          '__version' in data &&
+          typeof (data as Record<string, unknown>).__version === 'number'
+        ) {
+          currentVersion = (data as Record<string, unknown>).__version as number
+        }
+
         const targetVersion = options?.version ?? 0
 
         if (currentVersion < targetVersion && options?.migrators) {
-          console.log(`[Persist] Migrating ${key} from v${currentVersion} to v${targetVersion}`)
           for (let v = currentVersion + 1; v <= targetVersion; v++) {
-            if (options.migrators[v]) {
-              data = options.migrators[v](data)
+            const migrator = options.migrators[v]
+            if (migrator) {
+              data = migrator(data)
             }
           }
         }

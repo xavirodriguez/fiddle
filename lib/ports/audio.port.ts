@@ -19,7 +19,7 @@ export interface AudioCapturePort {
 
   /**
    * Starts capturing audio and streaming it to the processing pipeline.
-   * @param onFrame Callback for each captured audio detection event.
+   * @param onFrame - Callback for each captured audio detection event.
    */
   startStream(onFrame: (event: RawPitchEvent) => void): Promise<Result<void, AppError>>
 
@@ -59,7 +59,7 @@ export interface PitchDetectorWorkerPort {
   /**
    * Registers a callback for when the worker completes an analysis.
    */
-  onResult(callback: (result: any) => void): void
+  onResult(callback: (result: RawPitchEvent) => void): void
 
   /**
    * Terminates the worker.

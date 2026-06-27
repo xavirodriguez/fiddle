@@ -30,10 +30,10 @@
 import { err,ok, type Result } from 'neverthrow'
 import * as Tone from 'tone'
 
-import { type BPM, makeSeconds,type Seconds } from '@/lib/audio/tone-bridge'
-import { type Exercise, Note } from '@/lib/domain/exercise'
+import { type BPM,type Seconds } from '@/lib/audio/tone-bridge'
+import { type Exercise } from '@/lib/domain/exercise'
 import { AppError, ERROR_CODES } from '@/lib/errors/app-error'
-import { formatPitchName,MusicalNote, NoteName } from '@/lib/practice-core'
+import { formatPitchName,MusicalNote } from '@/lib/practice-core'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,7 +89,7 @@ export class TimelineSynchronizer {
    */
   compile(exercise: Exercise): Result<void, AppError> {
     try {
-      this.exerciseBpm = (exercise.bpm || 60) as BPM
+      this.exerciseBpm = (exercise.bpm ?? 60) as BPM
       this.timeline = []
       this.currentEventPointer = 0
 
@@ -119,7 +119,6 @@ export class TimelineSynchronizer {
         currentTime += durationSeconds
       })
 
-      console.info(`[TimelineSynchronizer] Compiled ${this.timeline.length} events.`)
       return ok(undefined)
     } catch (error) {
       return err(
@@ -137,7 +136,7 @@ export class TimelineSynchronizer {
    */
   schedule(onEventTrigger: (event: MusicalEvent) => void): void {
     this.timeline.forEach((event) => {
-      Tone.getTransport().schedule((time) => {
+      Tone.getTransport().schedule((_time) => {
         onEventTrigger(event)
       }, event.startTime)
     })
@@ -158,7 +157,7 @@ export class TimelineSynchronizer {
   verify(
     currentTime: Seconds,
     detectedMidi: number,
-    tolerance: Seconds = 0.1 as Seconds,
+    _tolerance: Seconds = 0.1 as Seconds,
   ): SyncVerification {
     // 1. Find the active event (O(1) assuming incremental calls)
     // In a real-world scenario with seeking, we'd need a binary search or pointer reset
