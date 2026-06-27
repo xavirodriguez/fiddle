@@ -28,7 +28,7 @@ export type NoteAlter = -1 | 0 | 1;
 /**
  * Esquemas de Validación (Zod)
  */
-const HertzSchema = z.number().finite().min(0); // Hercios deben ser no negativos
+const HertzSchema = z.number().finite().min(0);
 const CentsSchema = z.number().finite();
 const MidiNoteSchema = z.number().finite().min(0).max(127);
 
@@ -126,7 +126,6 @@ export function frequencyToMidiRaw(
   frequency: Hertz,
   config: TuningConfig = DEFAULT_TUNING
 ): MidiNote {
-  // Optimizamos evitando validaciones y wrappers en el bucle de 60 FPS
   return (12 * Math.log2(frequency / config.a4Frequency) + 69) as MidiNote;
 }
 
@@ -139,6 +138,13 @@ export function midiToFrequency(
 ): Result<Hertz, AppError> {
   const hertzValue = config.a4Frequency * Math.pow(2, (midi - 69) / 12);
   return makeHertz(hertzValue);
+}
+
+/**
+ * Calcula la desviación en cents entre dos notas MIDI.
+ */
+export function calculateCentsDifference(measured: MidiNote, target: MidiNote): Cents {
+  return ((measured - target) * 100) as Cents;
 }
 
 /**
