@@ -93,14 +93,33 @@ export class WebAudioAdapter implements AudioCapturePort {
     const ctx = this.audioContext!;
     const comp = this.compressor!;
 
+    // Reusable event object to avoid main-thread garbage
+    const eventProxy: RawPitchEvent = {
+      pitchHz: 0,
+      confidence: 0,
+      rms: 0,
+      spectralFlatness: 0,
+      spectralCentroid: 0,
+      timestamp: 0
+    };
+
     try {
       if (ctx.state === 'suspended') {
         await ctx.resume();
       }
 
       this.workletNode = new AudioWorkletNode(ctx, 'capture-processor');
-      this.workletNode.port.onmessage = (event: MessageEvent<WorkerOutputMessage>) => {
-        onFrame(event.data as unknown as RawPitchEvent);
+      this.workletNode.port.onmessage = (event: MessageEvent<Float64Array>) => {
+        const data = event.data;
+        if (data.length === 6) {
+          eventProxy.pitchHz = data[0];
+          eventProxy.confidence = data[1];
+          eventProxy.rms = data[2];
+          eventProxy.spectralFlatness = data[3];
+          eventProxy.spectralCentroid = data[4];
+          eventProxy.timestamp = data[5];
+          onFrame(eventProxy);
+        }
       };
 
       // Notify the worklet about the sample rate

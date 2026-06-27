@@ -1,4 +1,4 @@
-import { type Observable, Subject } from 'rxjs'
+import { type Observable, Subject, type Subscription } from 'rxjs'
 import { filter, map, share, tap } from 'rxjs/operators'
 import { createActor } from 'xstate'
 
@@ -26,14 +26,18 @@ export interface RawPitchEvent {
  * AudioPipeline
  *
  * Manages the reactive flow of pitch events using RxJS.
- * Optimized for Zero Allocation.
- * Flow: RawPitchEvent -> NoteSegmenter -> Agent -> EventSink
+ * Optimized for Zero Allocation and Main-Thread responsiveness.
+ * Flow: RawPitchEvent -> NoteSegmenter (XState) -> TechniqueAgent -> SHARED_PITCH_FRAME
  */
 export class AudioPipeline {
   private inputSubject = new Subject<RawPitchEvent>()
-  private eventSink = new Subject<PitchFrame>()
   private segmenter = createActor(noteSegmenterMachine)
   private techniqueAgent = new TechniqueAgent()
+  private internalSubscription: Subscription
+
+  // Pre-allocated event objects for zero-allocation XState interaction
+  private readonly PITCH_DETECTED_EVENT = { type: 'PITCH_DETECTED' as const, confidence: 0, rms: 0 }
+  private readonly PITCH_LOST_EVENT = { type: 'PITCH_LOST' as const }
 
   /**
    * The processed stream of valid pitch frames.
@@ -45,17 +49,17 @@ export class AudioPipeline {
     this.segmenter.start()
 
     // Internal pipeline setup
-    this.inputSubject.asObservable().pipe(
-      // 1. Note Segmentation (Update machine state)
+    this.pitchFrame$ = this.inputSubject.asObservable().pipe(
+      // 1. Note Segmentation (Side-effect: update machine state)
       tap(event => {
-        if (event.pitchHz > 0 && event.confidence > 0.8 && event.rms > 0.01) {
-          this.segmenter.send({
-            type: 'PITCH_DETECTED',
-            confidence: event.confidence,
-            rms: event.rms
-          })
+        const isStrong = event.pitchHz > 0 && event.confidence > 0.8 && event.rms > 0.01;
+        if (isStrong) {
+          const e = this.PITCH_DETECTED_EVENT;
+          e.confidence = event.confidence;
+          e.rms = event.rms;
+          this.segmenter.send(e);
         } else {
-          this.segmenter.send({ type: 'PITCH_LOST' })
+          this.segmenter.send(this.PITCH_LOST_EVENT);
         }
       }),
 
@@ -76,23 +80,23 @@ export class AudioPipeline {
         SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
 
         // 4. Technique Analysis (Side effect: updates SHARED_TECHNIQUE_METRICS)
-        const metrics = this.techniqueAgent.analyze(
+        SHARED_PITCH_FRAME.technique = this.techniqueAgent.analyze(
           SHARED_PITCH_FRAME,
           event.rms,
           event.spectralFlatness,
           event.spectralCentroid
-        );
-        SHARED_PITCH_FRAME.technique = metrics ?? undefined;
+        ) ?? undefined;
 
         return SHARED_PITCH_FRAME
       }),
 
-      // 4. EventSink Stage: Final emission
-      tap(frame => this.eventSink.next(frame)),
+      // 5. Multicast for multiple subscribers (UI, Practice Service, etc.)
       share()
-    ).subscribe();
+    );
 
-    this.pitchFrame$ = this.eventSink.asObservable();
+    // We must subscribe to the pipe to keep the side-effects (segmenter) running
+    // even if there are no external subscribers at a given moment.
+    this.internalSubscription = this.pitchFrame$.subscribe();
   }
 
   /**
@@ -110,9 +114,9 @@ export class AudioPipeline {
    * Cleanup resources
    */
   destroy(): void {
+    this.internalSubscription.unsubscribe()
     this.segmenter.stop()
     this.inputSubject.complete()
-    this.eventSink.complete()
   }
 }
 

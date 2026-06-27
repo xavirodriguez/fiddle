@@ -137,6 +137,11 @@ export class PracticeService {
       sync.currentMidiTarget !== verification.expectedMidi ||
       sync.isCorrectPitch !== verification.isCorrectPitch
     ) {
+      // If target changed, clear technique agent to avoid bleeding data
+      if (sync.currentMidiTarget !== verification.expectedMidi) {
+        audioPipeline.getTechniqueAgent().clear();
+      }
+
       store.updateSync({
         currentMeasure: nextMeasure,
         currentMidiTarget: verification.expectedMidi,

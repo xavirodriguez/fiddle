@@ -44,10 +44,10 @@
 * [ ] Configurar el `DynamicsCompressorNode` para atenuar los ataques agresivos del arco del violín y estabilizar el aire en la voz.
 
 
-* [ ] **2.3. Creación del Web Worker Concurrente (`PitchWorker.ts`)**
-* [ ] Implementar la infraestructura de paso de mensajes usando **Transferable Objects** (`ArrayBuffer`) para evitar la clonación de memoria a 60 FPS.
-* [ ] **Sub-tarea Crítica (Algoritmo MPM/YIN):** Implementar el cálculo de la Función de Diferencia de Magnitud Promedio (AMDF) para combatir la duplicación de octava provocada por el fuerte segundo armónico del violín.
-* [ ] Incorporar la **Puerta de Ruido (Noise Gate)** basada en el cálculo instantáneo de la energía RMS del buffer.
+* [x] **2.3. Creación del Web Worker Concurrente (`CaptureProcessor.js`)**
+* [x] Implementar la infraestructura de paso de mensajes usando **Transferable Objects** (`Float64Array`) para evitar la clonación de memoria pesada a 60 FPS.
+* [x] **Sub-tarea Crítica (Algoritmo MPM/YIN):** Implementar el cálculo de la Función de Diferencia de Magnitud Promedio (AMDF) para combatir la duplicación de octava provocada por el fuerte segundo armónico del violín (Delegado a `pitchy` MPM).
+* [x] Incorporar la **Puerta de Ruido (Noise Gate)** basada en el cálculo instantáneo de la energía RMS del buffer.
 
 
 
@@ -131,7 +131,7 @@
 
 * [x] **6.5. Motor de Audio y Persistencia Reactiva (Infrastructure/Adapters)**
     * [x] Migrar el metrónomo y scheduling a `tone.js`.
-    * [ ] Consolidar los stores de Zustand en Slices o migrar a `@tanstack/store`.
+    * [x] Consolidar los stores de Zustand en Slices o migrar a `@tanstack/store`.
 
 ---
 
