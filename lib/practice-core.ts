@@ -301,6 +301,7 @@ function handleStart(draft: PracticeState, payload?: { startIndex?: number }) {
   draft.holdDuration = 0
   draft.lastObservations = []
   draft.perfectNoteStreak = 0
+  draft.sessionHistory = []
 }
 
 function handleStop(draft: PracticeState) {
@@ -311,6 +312,7 @@ function handleStop(draft: PracticeState) {
   draft.holdDuration = 0
   draft.lastObservations = []
   draft.perfectNoteStreak = 0
+  draft.sessionHistory = []
 }
 
 function handleNoteDetected(draft: PracticeState, payload: DetectedNote) {
@@ -357,10 +359,38 @@ function handleNoteMatched(
 ) {
   if (draft.status !== 'listening' && draft.status !== 'validating') return
 
-  const centsError = draft.detectionHistory[0] ? Math.abs(draft.detectionHistory[0].cents) : 100
-  const isPerfect = payload?.isPerfect ?? centsError < 5
-  draft.perfectNoteStreak = isPerfect ? draft.perfectNoteStreak + 1 : 0
-  draft.lastObservations = payload?.observations ?? []
+  // Calculate average cents from detection history for better accuracy in reports
+  let sumCents = 0;
+  let count = 0;
+  for (const det of draft.detectionHistory) {
+    if (det) {
+      sumCents += det.cents;
+      count++;
+    }
+  }
+  const avgCents = count > 0 ? sumCents / count : 0;
+
+  const centsError = Math.abs(avgCents);
+  const isPerfect = payload?.isPerfect ?? centsError < 5;
+  draft.perfectNoteStreak = isPerfect ? draft.perfectNoteStreak + 1 : 0;
+  draft.lastObservations = payload?.observations ?? [];
+
+  // Record history (Limited to 100 entries to avoid unbound growth and GC pressure)
+  const targetNote = draft.exercise.notes[draft.currentIndex];
+  if (targetNote) {
+    const historyEntry = {
+      noteIndex: draft.currentIndex,
+      pitch: formatPitchName(targetNote.pitch),
+      avgCents,
+      isPerfect,
+      timestamp: payload?.timestamp ?? 0
+    };
+
+    if (draft.sessionHistory.length >= 100) {
+      draft.sessionHistory.shift();
+    }
+    draft.sessionHistory.push(historyEntry);
+  }
 
   if (draft.loopRegion?.isEnabled) {
     const isAtEndOfLoop = draft.currentIndex >= draft.loopRegion.endNoteIndex
