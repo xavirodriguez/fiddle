@@ -97,10 +97,6 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
      *    avoid full browser layout recalculations where possible. By using
      *    an imperative bridge, we prevent React from unintentionally triggering
      *    unnecessary style/layout updates on the container.
-     * 3. Nominal Precision: Audio scheduling happens in seconds. By using an
-     *    imperative API, we can trigger visual updates precisely when the
-     *    audio clock reaches the target timestamp, without waiting for the
-     *    next React render cycle (which may be delayed by up to 16ms or more).
      */
     useImperativeHandle(ref, () => ({
       async loadScore(musicXml: string) {

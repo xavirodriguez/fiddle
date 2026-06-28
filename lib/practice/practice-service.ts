@@ -46,47 +46,21 @@ export class PracticeService {
     actions: {
       notifySuccess: () => {
         const store = useAppStore.getState()
-        const detected = mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch ?? '')
-        const agent = audioPipeline.getTechniqueAgent();
+        const detected = mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch || '')
 
-        // 1. Record session-wide precision
-        if (this.cachedTargetPitch) {
-          agent.recordNoteResult(this.cachedTargetPitch, SHARED_PITCH_FRAME.centsDeviation);
-        }
-
-        // 2. Generate observations for the matched note
-        let observations: Observation[] = []
+        // Generate observations for the matched note
+        let observations: any[] = []
         if (SHARED_PITCH_FRAME.technique) {
-          observations = agent.generateObservations(
+          observations = audioPipeline.getTechniqueAgent().generateObservations(
             SHARED_PITCH_FRAME.technique,
             SHARED_PITCH_FRAME.timestamp
           )
         }
 
-        // 3. Optional: Add session-wide feedback if many notes are matched
-        const report = agent.getSessionReport();
-        if (report.totalNotesMatched > 5) {
-          if (report.worstNote === this.cachedTargetPitch) {
-            observations.push({
-              category: 'intonation',
-              severity: 'info',
-              message: `Esta nota (${this.cachedTargetPitch}) suele ser difícil para ti.`,
-              timestamp: SHARED_PITCH_FRAME.timestamp,
-            });
-          } else if (report.bestNote === this.cachedTargetPitch) {
-            observations.push({
-              category: 'intonation',
-              severity: 'info',
-              message: `¡Excelente! ${this.cachedTargetPitch} es tu mejor nota en esta sesión.`,
-              timestamp: SHARED_PITCH_FRAME.timestamp,
-            });
-          }
-        }
-
         store.internalUpdate({
           type: 'NOTE_MATCHED',
           payload: {
-            isPerfect: Math.abs(detected.cents) < 10,
+            isPerfect: Math.abs(detected.cents) < 5,
             observations,
           },
         })
@@ -166,6 +140,11 @@ export class PracticeService {
       sync.currentMidiTarget !== verification.expectedMidi ||
       sync.isCorrectPitch !== verification.isCorrectPitch
     ) {
+      // If target changed, clear technique agent to avoid bleeding data
+      if (sync.currentMidiTarget !== verification.expectedMidi) {
+        audioPipeline.getTechniqueAgent().clear();
+      }
+
       store.updateSync({
         currentMeasure: nextMeasure,
         currentMidiTarget: verification.expectedMidi,

@@ -21,15 +21,17 @@ class CaptureProcessor extends AudioWorkletProcessor {
     this._detector = null;
     this._sampleRate = 44100; // Default, will be updated
 
-    // Pre-allocated result object for zero-allocation
-    this._result = {
-      pitchHz: 0,
-      confidence: 0,
-      rms: 0,
-      spectralFlatness: 0,
-      spectralCentroid: 0,
-      timestamp: 0
-    };
+    /**
+     * Shared results buffer for ultra-efficient postMessage.
+     * Index 0: pitchHz
+     * Index 1: confidence
+     * Index 2: rms
+     * Index 3: spectralFlatness
+     * Index 4: spectralCentroid
+     * Index 5: timestamp
+     * @private
+     */
+    this._sharedArray = new Float64Array(6);
 
     this.port.onmessage = (event) => {
       if (event.data.type === 'init') {
@@ -54,7 +56,7 @@ class CaptureProcessor extends AudioWorkletProcessor {
       if (this._ptr >= bufferSize) {
         if (detector && globalThis.Meyda) {
           // 1. Spectral Analysis (First pass for Noise Gate)
-          // We accept one object allocation per 2048 samples (~46ms) as it's within library constraints
+          // Meyda forces feature object allocation by design; mitigated by immediate extraction.
           const features = globalThis.Meyda.extract(MEYDA_FEATURES, buffer);
           const rms = features?.rms || 0;
 
@@ -62,24 +64,25 @@ class CaptureProcessor extends AudioWorkletProcessor {
           let confidence = 0;
 
           // 2. Conditional Pitch Detection (Internal Noise Gate)
-          // Only run heavy pitch detection if there's significant signal
           if (rms > 0.01) {
             const pitchResult = detector.findPitch(buffer, this._sampleRate);
             pitchHz = pitchResult[0] || 0;
             confidence = pitchResult[1] || 0;
           }
 
-          // 3. Update shared result (Zero-Allocation)
-          const res = this._result;
-          res.pitchHz = pitchHz;
-          res.confidence = confidence;
-          res.rms = rms;
-          res.spectralFlatness = features?.spectralFlatness || 0;
-          res.spectralCentroid = features?.spectralCentroid || 0;
-          res.timestamp = currentTime;
+          // 3. Update shared primitive container
+          const arr = this._sharedArray;
+          arr[0] = pitchHz;
+          arr[1] = confidence;
+          arr[2] = rms;
+          arr[3] = features?.spectralFlatness || 0;
+          arr[4] = features?.spectralCentroid || 0;
+          arr[5] = currentTime;
 
           // 4. Post results to main thread
-          this.port.postMessage(res);
+          // Note: Structured clone is used for this small Float64Array to keep the worklet
+          // memory layout stable across frames.
+          this.port.postMessage(arr);
         }
 
         this._ptr = 0;
