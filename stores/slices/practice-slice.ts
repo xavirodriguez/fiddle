@@ -58,6 +58,7 @@ export interface PracticeSlice {
     currentMeasure: number
     currentMidiTarget: number | null
     isCorrectPitch: boolean
+    isCorrectTiming: boolean
   }
   internalUpdate: (event: PracticeEvent) => void
   updateSync: (sync: Partial<PracticeSlice['syncState']>) => void
@@ -75,6 +76,7 @@ export const createPracticeSlice: StateCreator<PracticeSlice> = (set, get) => ({
     currentMeasure: 0,
     currentMidiTarget: null,
     isCorrectPitch: false,
+    isCorrectTiming: false,
   },
 
   internalUpdate(event: PracticeEvent) {

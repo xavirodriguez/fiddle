@@ -52,6 +52,7 @@ export interface MusicalEvent {
  */
 export interface SyncVerification {
   isCorrectPitch: boolean
+  isCorrectTiming: boolean
   timingError: Seconds
   expectedMidi: number
   currentNoteIndex: number
@@ -62,6 +63,7 @@ export interface SyncVerification {
  */
 const SHARED_VERIFICATION_RESULT: SyncVerification = {
   isCorrectPitch: false,
+  isCorrectTiming: false,
   timingError: 0 as Seconds,
   expectedMidi: -1,
   currentNoteIndex: -1,
@@ -148,13 +150,21 @@ export class TimelineSynchronizer {
   verify(
     currentTime: Seconds,
     detectedMidi: number,
-    _tolerance: Seconds = 0.1 as Seconds,
+    tolerance: Seconds = 0.15 as Seconds,
   ): SyncVerification {
-    // 1. Find the active event (O(1) assuming incremental calls)
-    // In a real-world scenario with seeking, we'd need a binary search or pointer reset
+    // 1. Handle Seeking: If time jumped backwards, reset pointer to start.
+    // In a production environment, we could use binary search for O(log N) seeking,
+    // but a reset keeps it simple and O(1) for the common forward-playback case.
+    if (this.timeline.length > 0 && currentTime < this.timeline[this.currentEventPointer].startTime) {
+      this.currentEventPointer = 0
+    }
+
+    // 2. Find the active event (O(1) assuming incremental calls)
+    // We look for the event that is currently active based on its start time and duration.
+    // If we are past the current event, advance the pointer.
     while (
       this.currentEventPointer < this.timeline.length - 1 &&
-      currentTime >= this.timeline[this.currentEventPointer + 1].startTime
+      currentTime >= this.timeline[this.currentEventPointer].startTime + this.timeline[this.currentEventPointer].duration
     ) {
       this.currentEventPointer++
     }
@@ -163,16 +173,26 @@ export class TimelineSynchronizer {
 
     if (!currentEvent) {
       SHARED_VERIFICATION_RESULT.isCorrectPitch = false
+      SHARED_VERIFICATION_RESULT.isCorrectTiming = false
       SHARED_VERIFICATION_RESULT.timingError = 0 as Seconds
       SHARED_VERIFICATION_RESULT.expectedMidi = -1
       SHARED_VERIFICATION_RESULT.currentNoteIndex = -1
       return SHARED_VERIFICATION_RESULT
     }
 
+    // Timing error is the difference between current time and expected start time.
+    // However, if we are within the note duration, we are "on time".
     const timingError = (currentTime - currentEvent.startTime) as Seconds
+
+    // A note is correctly timed if the current time is within [startTime - tolerance, startTime + duration + tolerance]
+    // Since our pointer only moves forward when we pass a note, we just check if we are within tolerance of the start.
+    const isCorrectTiming = Math.abs(timingError) <= tolerance ||
+                           (currentTime >= currentEvent.startTime && currentTime <= currentEvent.startTime + currentEvent.duration)
+
     const isCorrectPitch = Math.round(detectedMidi) === currentEvent.midiNote
 
     SHARED_VERIFICATION_RESULT.isCorrectPitch = isCorrectPitch
+    SHARED_VERIFICATION_RESULT.isCorrectTiming = isCorrectTiming
     SHARED_VERIFICATION_RESULT.timingError = timingError
     SHARED_VERIFICATION_RESULT.expectedMidi = currentEvent.midiNote
     SHARED_VERIFICATION_RESULT.currentNoteIndex = currentEvent.noteIndex

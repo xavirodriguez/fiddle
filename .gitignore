@@ -5,4 +5,5 @@ build/
 *.log
 .DS_Store
 temp/
+*.tsbuildinfo
 .ai/logs/sessions/

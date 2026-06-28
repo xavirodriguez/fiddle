@@ -138,7 +138,8 @@ export class PracticeService {
     if (
       sync.currentMeasure !== nextMeasure ||
       sync.currentMidiTarget !== verification.expectedMidi ||
-      sync.isCorrectPitch !== verification.isCorrectPitch
+      sync.isCorrectPitch !== verification.isCorrectPitch ||
+      sync.isCorrectTiming !== verification.isCorrectTiming
     ) {
       // If target changed, clear technique agent to avoid bleeding data
       if (sync.currentMidiTarget !== verification.expectedMidi) {
@@ -149,6 +150,7 @@ export class PracticeService {
         currentMeasure: nextMeasure,
         currentMidiTarget: verification.expectedMidi,
         isCorrectPitch: verification.isCorrectPitch,
+        isCorrectTiming: verification.isCorrectTiming,
       })
     }
 
