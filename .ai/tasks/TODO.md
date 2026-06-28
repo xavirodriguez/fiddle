@@ -140,21 +140,21 @@
 **Objetivo:** Proporcionar feedback inteligente al usuario mediante el análisis avanzado de señales y heurísticas musicales.
 **Asignado a:** `AI & Signal Specialist`
 
-* [ ] **7.1. Agente de Análisis de Técnica (Domain)**
-    * [ ] Implementar el `TechniqueAgent` usando `simple-statistics` para detectar:
-        * [ ] **Estabilidad de Tono:** Varianza y desviación estándar de los *cents* durante una nota mantenida.
-        * [ ] **Vibrato:** Análisis de frecuencia fundamental (regresión sinusoidal simple) para medir velocidad y amplitud del vibrato.
-        * [ ] **Estabilidad de Arco (Voz/Violín):** Análisis de la envolvente de amplitud (RMS) para detectar "temblores" o cortes no deseados.
+* [x] **7.1. Agente de Análisis de Técnica (Domain)**
+    * [x] Implementar el `TechniqueAgent` usando `simple-statistics` (manual zero-allocation) para detectar:
+        * [x] **Estabilidad de Tono:** Varianza y desviación estándar de los *cents* durante una nota mantenida.
+        * [x] **Vibrato:** Análisis de cruces por cero de la media para medir velocidad y amplitud del vibrato.
+        * [x] **Estabilidad de Arco (Voz/Violín):** Análisis de la envolvente de amplitud (RMS) para detectar arqueo inestable.
 
-* [ ] **7.2. Extracción de Timbre (Infrastructure)**
-    * [ ] Configurar `meyda` para extraer features espectrales:
-        * [ ] `spectralCentroid`: Para medir el "brillo" del sonido.
-        * [ ] `spectralFlatness`: Para distinguir entre tono puro y ruido (aire en la voz, raspado en el violín).
-    * [ ] Mapear estas métricas a observaciones de dominio (ej. "Tono brillante", "Mucho aire").
+* [x] **7.2. Extracción de Timbre (Infrastructure)**
+    * [x] Configurar `meyda` para extraer features espectrales:
+        * [x] `spectralCentroid`: Para medir el "brillo" del sonido.
+        * [x] `spectralFlatness`: Para distinguir entre tono puro y ruido (aire en la voz, raspado en el violín).
+    * [x] Mapear estas métricas a observaciones de dominio (ej. "Tono brillante", "Mucho aire").
 
-* [ ] **7.3. Generador de Heurísticas de Feedback (Application)**
-    * [ ] Diseñar el motor de reglas que consume `TechniqueMetrics` y genera `Observations` amigables para el usuario.
-    * [ ] Implementar la lógica de "Mejor Nota" y "Nota con Mayor Dificultad" basada en precisión histórica de la sesión.
+* [x] **7.3. Generador de Heurísticas de Feedback (Application)**
+    * [x] Diseñar el motor de reglas que consume `TechniqueMetrics` y genera `Observations` amigables para el usuario.
+    * [x] Implementar la lógica de "Mejor Nota" y "Nota con Mayor Dificultad" basada en precisión histórica de la sesión.
 
 ---
 

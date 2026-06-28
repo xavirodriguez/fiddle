@@ -34,7 +34,6 @@ export class PracticeService {
   private synchronizer = new TimelineSynchronizer()
   private onNoteTriggered: ((event: MusicalEvent) => void) | null = null
   private pipelineSubscription: Subscription | null = null
-  private audioAdapter: WebAudioAdapter = new WebAudioAdapter()
 
   /** Pre-allocated event object for the practice machine */
   private readonly REUSABLE_PITCH_EVENT: Extract<PracticeEvent, { type: 'PITCH_DETECTED' }> = {
@@ -56,6 +55,13 @@ export class PracticeService {
             SHARED_PITCH_FRAME.timestamp
           )
         }
+
+        // Record the note in the technique agent for session statistics
+        audioPipeline.getTechniqueAgent().recordNote(
+          detected.pitch,
+          detected.cents,
+          SHARED_PITCH_FRAME.technique?.rmsStability ?? 1
+        );
 
         store.internalUpdate({
           type: 'NOTE_MATCHED',
@@ -80,11 +86,14 @@ export class PracticeService {
       console.error('[PracticeService] ToneBridge failed:', bridgeResult.error)
     }
 
-    // Initialize the adapter (which uses audioManager internally or shares context)
-    await this.audioAdapter.initialize()
-
     this.synchronizer.compile(exercise)
     this.onNoteTriggered = onNoteTriggered
+
+    // Ensure the reactive pipeline is active (This also starts the hardware stream via singleton adapter)
+    const pipelineResult = await audioPipeline.init()
+    if (pipelineResult.isErr()) {
+      console.error('[PracticeService] AudioPipeline initialization failed:', pipelineResult.error)
+    }
 
     // Setup RxJS Pipeline Subscription
     this.pipelineSubscription = audioPipeline.pitchFrame$.subscribe((frame) => {
@@ -99,11 +108,6 @@ export class PracticeService {
     await Tone.start()
     Tone.getTransport().start()
 
-    // Start Audio Hardware Stream
-    await this.audioAdapter.startStream((event: RawPitchEvent) => {
-      audioPipeline.push(event)
-    })
-
     // Schedule musical events in Tone.js Transport
     this.synchronizer.schedule((event) => {
       if (this.onNoteTriggered) this.onNoteTriggered(event)
@@ -112,9 +116,7 @@ export class PracticeService {
 
   stop() {
     this.actor.stop()
-    this.audioAdapter.stopStream().catch((error: unknown) => {
-      console.error('[PracticeService] stopStream failed:', error)
-    })
+    void audioPipeline.destroy()
     toneAudioPlayer.stopAll()
   }
 
@@ -205,7 +207,7 @@ export class PracticeService {
           this.actor.send({ type: 'SET_TARGET', midi })
 
           // Adaptive filtering: update biquad filter to target note's frequency
-          this.audioAdapter.updateFilterFrequency(midiResult.value.frequency)
+          audioPipeline.getAdapter().updateFilterFrequency(midiResult.value.frequency)
         }
       }
     }
