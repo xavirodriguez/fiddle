@@ -120,10 +120,15 @@ export interface PracticeState {
   }
 
   /**
-   * Ring buffer of the last N detected notes (newest first).
-   * Used for confidence averaging and correctness evaluation.
+   * Ring buffer data for the last N detected notes.
+   * Managed as a fixed-size array with pointers for Zero-Allocation.
    */
-  detectionHistory: DetectedNote[]
+  detectionHistory: {
+    items: (DetectedNote | null)[]
+    head: number
+    size: number
+    maxSize: number
+  }
 
   /**
    * How long (ms) the current note has been held in tune.
