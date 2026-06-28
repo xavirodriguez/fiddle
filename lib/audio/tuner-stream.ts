@@ -15,31 +15,16 @@
  * import from React, Zustand, or any UI framework.
  */
 
-import { PitchDetector } from 'pitchy'
 import { Observable } from 'rxjs'
 
-import type { PitchFrame } from '../domain/data-structures'
 import { SHARED_PITCH_FRAME } from '../domain/data-structures'
+import type { PitchFrame } from '../domain/data-structures'
 import type { Cents,Hertz } from '../domain/musical-domain'
-import { DEFAULT_TUNING,frequencyToMidi, midiToFrequency } from '../domain/musical-domain'
-
-/** Minimum RMS to consider the signal non-silent (noise gate). */
-const RMS_THRESHOLD = 0.01
+import { PitchDetector } from '../pitch-detector'
+import { MusicalNote } from '../practice-core'
 
 /** Minimum Pitchy confidence to emit a pitch event. */
 const CONFIDENCE_THRESHOLD = 0.85
-
-/**
- * Calculates the RMS of a Float32Array without allocating.
- * @internal
- */
-function calcRms(buf: Float32Array): number {
-  let sum = 0
-  for (let i = 0; i < buf.length; i++) {
-    sum += buf[i] * buf[i]
-  }
-  return Math.sqrt(sum / buf.length)
-}
 
 /**
  * Configuration for the tuner stream.
@@ -76,7 +61,7 @@ export function createTunerStream(
     let source: MediaStreamAudioSourceNode | null = null
     let mediaStream: MediaStream | null = null
     let rafId = 0
-    let detector: PitchDetector<Float32Array> | null = null
+    let detector: PitchDetector | null = null
 
     // Pre-allocate the frame buffer — reused every tick (Zero-Allocation).
     const inputBuffer = new Float32Array(fftSize)
@@ -86,10 +71,10 @@ export function createTunerStream(
 
       analyser.getFloatTimeDomainData(inputBuffer)
 
-      const rms = calcRms(inputBuffer)
+      const result = detector.detect(inputBuffer)
 
-      if (rms < RMS_THRESHOLD) {
-        // Silent frame: emit silence marker without allocating.
+      if (result.pitchHz === 0) {
+        // Silent frame or no pitch: emit silence marker without allocating.
         SHARED_PITCH_FRAME.frequency = 0 as Hertz
         SHARED_PITCH_FRAME.centsDeviation = 0 as Cents
         SHARED_PITCH_FRAME.confidence = 0
@@ -99,37 +84,20 @@ export function createTunerStream(
         return
       }
 
-      const [frequency, confidence] = detector.findPitch(
-        inputBuffer,
-        audioCtx?.sampleRate ?? 44100
-      )
-
-      if (confidence < CONFIDENCE_THRESHOLD) {
+      if (result.confidence < CONFIDENCE_THRESHOLD) {
         rafId = requestAnimationFrame(loop)
         return
       }
 
-      // --- Zero-Allocation cents calculation ---
-      const midiResult = frequencyToMidi(frequency as Hertz)
-      if (midiResult.isErr()) {
-        rafId = requestAnimationFrame(loop)
-        return
-      }
+      const frequency = result.pitchHz
+      const confidence = result.confidence
 
-      const fractionalMidi = midiResult.value
-      const nearestMidi = Math.round(fractionalMidi)
-      const nearestFreqResult = midiToFrequency(nearestMidi as typeof midiResult.value, DEFAULT_TUNING)
-      if (nearestFreqResult.isErr()) {
-        rafId = requestAnimationFrame(loop)
-        return
-      }
-
-      // cents = 1200 * log2(f / f_ref)
-      const cents = (1200 * Math.log2(frequency / nearestFreqResult.value)) as Cents
+      // --- Zero-Allocation mapping using MusicalNote core utility ---
+      const note = MusicalNote.fromFrequencyShared(frequency);
 
       // Mutate the shared frame in-place — no new object.
       SHARED_PITCH_FRAME.frequency = frequency as Hertz
-      SHARED_PITCH_FRAME.centsDeviation = cents
+      SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
       SHARED_PITCH_FRAME.confidence = confidence
       SHARED_PITCH_FRAME.timestamp = audioCtx?.currentTime ?? 0
 
@@ -146,7 +114,7 @@ export function createTunerStream(
         analyser.fftSize = fftSize
         source = audioCtx.createMediaStreamSource(mediaStream)
         source.connect(analyser)
-        detector = PitchDetector.forFloat32Array(fftSize)
+        detector = new PitchDetector(audioCtx.sampleRate, fftSize)
         rafId = requestAnimationFrame(loop)
       } catch (error) {
         subscriber.error(error)
