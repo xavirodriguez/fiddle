@@ -30,9 +30,6 @@ import {
 import { AppError, ERROR_CODES } from './errors/app-error'
 import { type Observation } from './technique-types'
 
-// Ring buffer for detection history to avoid allocations in the reducer.
-const DETECTION_HISTORY_BUFFER = new FixedRingBuffer<DetectedNote>(10)
-
 export type {
   DetectedNote,
   LoopRegion,
@@ -296,8 +293,7 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
 function handleStart(draft: PracticeState, payload?: { startIndex?: number }) {
   draft.status = 'listening'
   draft.currentIndex = payload?.startIndex ?? 0
-  DETECTION_HISTORY_BUFFER.clear()
-  draft.detectionHistory = []
+  clearHistory(draft)
   draft.holdDuration = 0
   draft.lastObservations = []
   draft.perfectNoteStreak = 0
@@ -307,8 +303,7 @@ function handleStart(draft: PracticeState, payload?: { startIndex?: number }) {
 function handleStop(draft: PracticeState) {
   draft.status = 'idle'
   draft.currentIndex = 0
-  DETECTION_HISTORY_BUFFER.clear()
-  draft.detectionHistory = []
+  clearHistory(draft)
   draft.holdDuration = 0
   draft.lastObservations = []
   draft.perfectNoteStreak = 0
@@ -316,27 +311,22 @@ function handleStop(draft: PracticeState) {
 }
 
 function handleNoteDetected(draft: PracticeState, payload: DetectedNote) {
-  DETECTION_HISTORY_BUFFER.push(payload)
-
-  // Sincronización eficiente con el draft de Immer
-  // Evitamos recrear el array si ya tiene el tamaño correcto
-  if (!draft.detectionHistory) {
-    draft.detectionHistory = []
+  const history = draft.detectionHistory
+  history.items[history.head] = castDraft(payload)
+  history.head = (history.head + 1) % history.maxSize
+  if (history.size < history.maxSize) {
+    history.size++
   }
-
-  if (draft.detectionHistory.length !== DETECTION_HISTORY_BUFFER.length) {
-    draft.detectionHistory.length = DETECTION_HISTORY_BUFFER.length
-  }
-
-  DETECTION_HISTORY_BUFFER.forEach((item, i) => {
-    // Solo asignamos si el objeto es diferente para minimizar el trabajo de Immer
-    if (draft.detectionHistory[i] !== item) {
-      draft.detectionHistory[i] = castDraft(item)
-    }
-  })
 
   if (draft.status === 'correct') draft.status = 'listening'
   if (draft.status === 'listening') draft.holdDuration = 0
+}
+
+function clearHistory(draft: PracticeState) {
+  draft.detectionHistory.head = 0
+  draft.detectionHistory.size = 0
+  // Note: we don't necessarily need to null out items for performance,
+  // but it's cleaner for some logic.
 }
 
 function handleHoldingNote(draft: PracticeState, payload: { duration: number }) {
@@ -355,42 +345,16 @@ function handleNoNoteDetected(draft: PracticeState) {
 
 function handleNoteMatched(
   draft: PracticeState,
-  payload?: { isPerfect: boolean; observations?: Observation[] },
+  payload: Extract<PracticeEvent, { type: 'NOTE_MATCHED' }>['payload'],
 ) {
   if (draft.status !== 'listening' && draft.status !== 'validating') return
 
-  // Calculate average cents from detection history for better accuracy in reports
-  let sumCents = 0;
-  let count = 0;
-  for (const det of draft.detectionHistory) {
-    if (det) {
-      sumCents += det.cents;
-      count++;
-    }
-  }
-  const avgCents = count > 0 ? sumCents / count : 0;
-
-  const centsError = Math.abs(avgCents);
-  const isPerfect = payload?.isPerfect ?? centsError < 5;
-  draft.perfectNoteStreak = isPerfect ? draft.perfectNoteStreak + 1 : 0;
-  draft.lastObservations = payload?.observations ?? [];
-
-  // Record history (Limited to 100 entries to avoid unbound growth and GC pressure)
-  const targetNote = draft.exercise.notes[draft.currentIndex];
-  if (targetNote) {
-    const historyEntry = {
-      noteIndex: draft.currentIndex,
-      pitch: formatPitchName(targetNote.pitch),
-      avgCents,
-      isPerfect,
-      timestamp: payload?.timestamp ?? 0
-    };
-
-    if (draft.sessionHistory.length >= 100) {
-      draft.sessionHistory.shift();
-    }
-    draft.sessionHistory.push(historyEntry);
-  }
+  const newestIndex = (draft.detectionHistory.head - 1 + draft.detectionHistory.maxSize) % draft.detectionHistory.maxSize
+  const newestItem = draft.detectionHistory.items[newestIndex]
+  const centsError = newestItem ? Math.abs(newestItem.cents) : 100
+  const isPerfect = payload?.isPerfect ?? centsError < 5
+  draft.perfectNoteStreak = isPerfect ? draft.perfectNoteStreak + 1 : 0
+  draft.lastObservations = payload?.observations ?? []
 
   if (draft.loopRegion?.isEnabled) {
     const isAtEndOfLoop = draft.currentIndex >= draft.loopRegion.endNoteIndex
@@ -408,8 +372,7 @@ function handleNoteMatched(
       } else {
         draft.currentIndex = draft.loopRegion.startNoteIndex
         draft.status = 'correct'
-        DETECTION_HISTORY_BUFFER.clear()
-        draft.detectionHistory = []
+        clearHistory(draft)
         draft.holdDuration = 0
       }
       return
@@ -423,8 +386,7 @@ function handleNoteMatched(
   } else {
     draft.currentIndex++
     draft.status = 'correct'
-    DETECTION_HISTORY_BUFFER.clear()
-    draft.detectionHistory = []
+    clearHistory(draft)
     draft.holdDuration = 0
   }
 }
@@ -434,8 +396,7 @@ function handleJumpToNote(draft: PracticeState, payload: { index: number }) {
   draft.currentIndex = Math.max(0, Math.min(payload.index, totalNotes - 1))
   if (draft.status === 'completed') draft.status = 'listening'
   draft.holdDuration = 0
-  DETECTION_HISTORY_BUFFER.clear()
-  draft.detectionHistory = []
+  clearHistory(draft)
 }
 
 /**
