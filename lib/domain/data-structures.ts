@@ -1,27 +1,34 @@
+/**
+ * Estructuras de Datos del Dominio
+ *
+ * Define los tipos fundamentales para el flujo de análisis de audio,
+ * optimizados para rendimiento y consistencia temporal.
+ */
+
 import { type TechniqueMetrics } from '../technique-types';
 import { type Cents, type Hertz } from './musical-domain';
 
 /**
- * Violin-specific domain constants.
- * Professional intonation tolerance is typically within 15 cents.
+ * Umbral de tolerancia continua para violín (Intonación profesional).
+ * Se define típicamente en +/- 15 cents.
  */
 export const VIOLIN_TOLERANCE_CENTS = 15 as Cents;
 
 /**
- * Represents a discrete frame of pitch analysis at a specific point in time.
- * This structure is immutable for domain logic.
+ * Representa un frame discreto de análisis de tono en un punto temporal.
+ * Esta estructura es inmutable para la lógica del dominio.
  */
 export interface PitchFrame {
   readonly frequency: Hertz;
   readonly centsDeviation: Cents;
   readonly confidence: number;
-  readonly timestamp: number; // Linked to AudioContext.currentTime
+  readonly timestamp: number; // Vinculado a AudioContext.currentTime
   readonly technique?: TechniqueMetrics;
 }
 
 /**
- * Mutable version of PitchFrame for performance-critical DSP loops.
- * Used with SHARED_PITCH_FRAME to avoid object allocation in the hot path.
+ * Versión mutable de PitchFrame para bucles DSP críticos.
+ * Se utiliza con SHARED_PITCH_FRAME para evitar asignaciones de objetos (Zero-Allocation).
  */
 export interface MutablePitchFrame {
   frequency: Hertz;
@@ -32,7 +39,7 @@ export interface MutablePitchFrame {
 }
 
 /**
- * Pre-allocated shared object to be reused across analysis frames (Zero-Allocation).
+ * Objeto compartido pre-asignado para ser reutilizado en frames de análisis.
  * @internal
  */
 export const SHARED_PITCH_FRAME: MutablePitchFrame = {
@@ -43,12 +50,7 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
 };
 
 /**
- * Performance-optimized Ring Buffer for real-time analysis windows.
- *
- * DESIGN DECISIONS:
- * 1. Zero-Allocation: Uses a pre-allocated fixed-size array.
- * 2. Pure Domain: No external dependencies.
- * 3. Cache-Friendly: Uses a simple circular index.
+ * Buffer Circular de tamaño fijo optimizado para rendimiento.
  */
 export class FixedRingBuffer<T> {
   private readonly buffer: Array<T | undefined>;
@@ -59,9 +61,6 @@ export class FixedRingBuffer<T> {
     this.buffer = new Array<T | undefined>(maxSize).fill(undefined);
   }
 
-  /**
-   * Pushes an item into the buffer. If the buffer is full, it overwrites the oldest item.
-   */
   push(item: T): void {
     this.buffer[this.head] = item;
     this.head = (this.head + 1) % this.maxSize;
@@ -70,9 +69,6 @@ export class FixedRingBuffer<T> {
     }
   }
 
-  /**
-   * High-performance iteration from newest to oldest.
-   */
   forEach(callback: (item: T, index: number) => void): void {
     if (this.size === 0) return;
 
@@ -85,18 +81,12 @@ export class FixedRingBuffer<T> {
     }
   }
 
-  /**
-   * Returns the most recently added item without removing it.
-   */
   peek(): T | undefined {
     if (this.size === 0) return undefined;
     const index = (this.head - 1 + this.maxSize) % this.maxSize;
     return this.buffer[index];
   }
 
-  /**
-   * Clears the buffer logically (O(1)).
-   */
   clear(): void {
     this.head = 0;
     this.size = 0;
@@ -107,8 +97,8 @@ export class FixedRingBuffer<T> {
   }
 
   /**
-   * ONLY FOR TESTS OR NON-PERFORMANCE CRITICAL PATHS.
-   * Allocates a new array.
+   * SOLO PARA PRUEBAS O RUTAS NO CRÍTICAS PARA EL RENDIMIENTO.
+   * Asigna un nuevo array.
    */
   toArray(): readonly T[] {
     const result: T[] = new Array<T>(this.size);
