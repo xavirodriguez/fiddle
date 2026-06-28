@@ -296,6 +296,7 @@ export function reducePracticeEvent(state: PracticeState, event: PracticeEvent):
 function handleStart(draft: PracticeState, payload?: { startIndex?: number }) {
   draft.status = 'listening'
   draft.currentIndex = payload?.startIndex ?? 0
+  DETECTION_HISTORY_BUFFER.clear()
   draft.detectionHistory = []
   draft.holdDuration = 0
   draft.lastObservations = []
@@ -305,6 +306,7 @@ function handleStart(draft: PracticeState, payload?: { startIndex?: number }) {
 function handleStop(draft: PracticeState) {
   draft.status = 'idle'
   draft.currentIndex = 0
+  DETECTION_HISTORY_BUFFER.clear()
   draft.detectionHistory = []
   draft.holdDuration = 0
   draft.lastObservations = []
@@ -313,11 +315,24 @@ function handleStop(draft: PracticeState) {
 
 function handleNoteDetected(draft: PracticeState, payload: DetectedNote) {
   DETECTION_HISTORY_BUFFER.push(payload)
-  if (!draft.detectionHistory) draft.detectionHistory = []
-  draft.detectionHistory.length = DETECTION_HISTORY_BUFFER.length
+
+  // Sincronización eficiente con el draft de Immer
+  // Evitamos recrear el array si ya tiene el tamaño correcto
+  if (!draft.detectionHistory) {
+    draft.detectionHistory = []
+  }
+
+  if (draft.detectionHistory.length !== DETECTION_HISTORY_BUFFER.length) {
+    draft.detectionHistory.length = DETECTION_HISTORY_BUFFER.length
+  }
+
   DETECTION_HISTORY_BUFFER.forEach((item, i) => {
-    draft.detectionHistory[i] = castDraft(item)
+    // Solo asignamos si el objeto es diferente para minimizar el trabajo de Immer
+    if (draft.detectionHistory[i] !== item) {
+      draft.detectionHistory[i] = castDraft(item)
+    }
   })
+
   if (draft.status === 'correct') draft.status = 'listening'
   if (draft.status === 'listening') draft.holdDuration = 0
 }
@@ -350,7 +365,12 @@ function handleNoteMatched(
   if (draft.loopRegion?.isEnabled) {
     const isAtEndOfLoop = draft.currentIndex >= draft.loopRegion.endNoteIndex
     if (isAtEndOfLoop) {
-      const { drillTarget, isLoopCompleted } = evaluateDrillTarget(draft.loopRegion, payload)
+      const loopSize = draft.loopRegion.endNoteIndex - draft.loopRegion.startNoteIndex + 1
+      const isPerfectRepetition = draft.perfectNoteStreak >= loopSize
+
+      const { drillTarget, isLoopCompleted } = evaluateDrillTarget(draft.loopRegion, {
+        isPerfect: isPerfectRepetition
+      })
       draft.loopRegion.drillTarget = drillTarget
       if (isLoopCompleted) {
         draft.status = 'completed'
@@ -358,6 +378,7 @@ function handleNoteMatched(
       } else {
         draft.currentIndex = draft.loopRegion.startNoteIndex
         draft.status = 'correct'
+        DETECTION_HISTORY_BUFFER.clear()
         draft.detectionHistory = []
         draft.holdDuration = 0
       }
@@ -372,6 +393,7 @@ function handleNoteMatched(
   } else {
     draft.currentIndex++
     draft.status = 'correct'
+    DETECTION_HISTORY_BUFFER.clear()
     draft.detectionHistory = []
     draft.holdDuration = 0
   }
@@ -382,6 +404,7 @@ function handleJumpToNote(draft: PracticeState, payload: { index: number }) {
   draft.currentIndex = Math.max(0, Math.min(payload.index, totalNotes - 1))
   if (draft.status === 'completed') draft.status = 'listening'
   draft.holdDuration = 0
+  DETECTION_HISTORY_BUFFER.clear()
   draft.detectionHistory = []
 }
 

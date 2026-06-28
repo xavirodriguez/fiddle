@@ -60,7 +60,7 @@ export class PracticeService {
         store.internalUpdate({
           type: 'NOTE_MATCHED',
           payload: {
-            isPerfect: Math.abs(detected.cents) < 10,
+            isPerfect: Math.abs(detected.cents) < 5,
             observations,
           },
         })
