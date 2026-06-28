@@ -1,7 +1,7 @@
 import { CircularBuffer } from 'mnemonist';
 
 import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structures';
-import { type Observation, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
+import { type NoteTechnique,type Observation, type SessionReport, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
 
 /**
  * TechniqueAgent
@@ -137,6 +137,69 @@ export class TechniqueAgent {
       obs.push({ category: 'vibrato', severity: 'info', message: 'Buen vibrato', timestamp });
     }
     return obs;
+  }
+
+  /**
+   * Calculates a SessionReport based on session history.
+   */
+  calculateSessionReport(history: Array<{ pitch: string; avgCents: number; isPerfect: boolean }>): SessionReport {
+    if (history.length === 0) {
+      return {
+        bestNote: null,
+        bestNoteAccuracy: 100,
+        worstNote: null,
+        worstNoteAccuracy: 0,
+        overallStability: 0,
+        recommendation: 'Comienza a practicar para recibir recomendaciones.'
+      };
+    }
+
+    let bestNote = history[0].pitch;
+    let bestAcc = Math.abs(history[0].avgCents);
+    let worstNote = history[0].pitch;
+    let worstAcc = Math.abs(history[0].avgCents);
+    let perfectCount = 0;
+
+    for (const entry of history) {
+      const acc = Math.abs(entry.avgCents);
+      if (acc < bestAcc) {
+        bestAcc = acc;
+        bestNote = entry.pitch;
+      }
+      if (acc > worstAcc) {
+        worstAcc = acc;
+        worstNote = entry.pitch;
+      }
+      if (entry.isPerfect) perfectCount++;
+    }
+
+    const report: SessionReport = {
+      bestNote,
+      bestNoteAccuracy: bestAcc,
+      worstNote,
+      worstNoteAccuracy: worstAcc,
+      overallStability: perfectCount / history.length,
+      recommendation: ''
+    };
+
+    report.recommendation = this.getRecommendation(report);
+    return report;
+  }
+
+  /**
+   * Generates a human-readable recommendation based on aggregate session metrics.
+   */
+  getRecommendation(report: SessionReport): string {
+    if (report.overallStability < 0.5) {
+      return 'Enfócate en mantener el arco constante y una presión estable.';
+    }
+    if (report.worstNoteAccuracy > 15) {
+      return `La nota ${report.worstNote} necesita más precisión. Practica escalas lentamente.`;
+    }
+    if (report.bestNoteAccuracy < 5 && report.overallStability > 0.8) {
+      return '¡Excelente estabilidad! Prueba a aumentar el tempo del ejercicio.';
+    }
+    return 'Buen progreso. Mantén la concentración en la afinación de las notas agudas.';
   }
 
   clear(): void {

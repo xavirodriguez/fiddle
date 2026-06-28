@@ -56,6 +56,20 @@ export interface TechniqueMetrics {
 }
 
 /**
+ * SessionReport
+ *
+ * Aggregate performance statistics for the current practice session.
+ */
+export interface SessionReport {
+  bestNote: string | null;
+  bestNoteAccuracy: number; // Lowest abs(cents)
+  worstNote: string | null;
+  worstNoteAccuracy: number; // Highest abs(cents)
+  overallStability: number; // 0-1
+  recommendation: string;
+}
+
+/**
  * Pre-allocated shared object to avoid GC pressure in the hot path.
  * @internal
  */

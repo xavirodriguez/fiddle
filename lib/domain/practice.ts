@@ -142,6 +142,15 @@ export interface PracticeState {
 
   /** Metronome configuration for the current session. */
   metronome: MetronomeConfig
+
+  /** Historical record of performance metrics for each note matched in the session. */
+  sessionHistory: Array<{
+    noteIndex: number;
+    pitch: string;
+    avgCents: number;
+    isPerfect: boolean;
+    timestamp: number;
+  }>
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +164,7 @@ export type PracticeEvent =
   | { type: 'NOTE_DETECTED'; payload: DetectedNote }
   | { type: 'HOLDING_NOTE'; payload: { duration: number } }
   | { type: 'NO_NOTE_DETECTED' }
-  | { type: 'NOTE_MATCHED'; payload: { isPerfect: boolean; technique?: NoteTechnique; observations?: Observation[] } }
+  | { type: 'NOTE_MATCHED'; payload: { isPerfect: boolean; technique?: NoteTechnique; observations?: Observation[]; timestamp: number } }
   | { type: 'JUMP_TO_NOTE'; payload: { index: number } }
   | { type: 'UPDATE_METRONOME'; payload: Partial<MetronomeConfig> }
   | { type: 'UPDATE_LOOP_REGION'; payload: Partial<LoopRegion> }
