@@ -21,7 +21,12 @@ export type MidiNote = number & { readonly __brand: 'MidiNote' };
 /**
  * Validation Schemas
  */
-const HertzSchema = z.number().finite().positive(); // Hertz must be positive for log2 formulas
+export type NoteAlter = -1 | 0 | 1;
+
+/**
+ * Esquemas de Validación (Zod)
+ */
+const HertzSchema = z.number().finite().min(0);
 const CentsSchema = z.number().finite();
 const MidiNoteSchema = z.number().finite().min(0).max(127);
 
@@ -134,7 +139,14 @@ export function midiToFrequency(
 }
 
 /**
- * Linear interpolation utility for signal smoothing.
+ * Calcula la desviación en cents entre dos notas MIDI.
+ */
+export function calculateCentsDifference(measured: MidiNote, target: MidiNote): Cents {
+  return ((measured - target) * 100) as Cents;
+}
+
+/**
+ * Utilidad de interpolación lineal (Lerp) para suavizado de señales.
  */
 export function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
