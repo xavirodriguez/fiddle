@@ -62,6 +62,7 @@ export class PracticeService {
           payload: {
             isPerfect: Math.abs(detected.cents) < 5,
             observations,
+            timestamp: SHARED_PITCH_FRAME.timestamp
           },
         })
       },

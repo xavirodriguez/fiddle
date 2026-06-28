@@ -23,6 +23,7 @@ const INITIAL_PRACTICE_STATE: PracticeState = {
   lastObservations: [],
   perfectNoteStreak: 0,
   exercise: EMPTY_EXERCISE,
+  sessionHistory: [],
   loopRegion: {
     isEnabled: false,
     startNoteIndex: 0,

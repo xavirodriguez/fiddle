@@ -40,3 +40,14 @@
 - Corrección de bug en el contador de frames de `NoteSegmenter`.
 - Mejora de rendimiento moviendo el procesamiento pesado DSP después de la puerta de ruido (Noise Gate).
 - Corrección de importaciones y tipos en `FixedRingBuffer` y `AudioPipeline`.
+
+## [UNRELEASED]
+
+### Added
+- **Technique Analysis:** Implementación de `calculateSessionReport` y `getRecommendation` en `TechniqueAgent` para feedback personalizado.
+- **Analytics:** Agregada propiedad `sessionHistory` a `PracticeState` para rastrear el desempeño nota a nota.
+- **Protocols:** Sincronización estricta con el reloj de audio (`AudioContext.currentTime`) en el historial de sesión.
+
+### Changed
+- **Performance:** Optimización del cálculo de promedios en el historial de sesión respetando mandatos de zero-allocation.
+- **Documentation:** Limpieza y sincronización masiva de `.ai/tasks/TODO.md` y `.ai/tasks/DONE.md`.

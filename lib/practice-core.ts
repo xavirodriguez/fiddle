@@ -297,6 +297,7 @@ function handleStart(draft: PracticeState, payload?: { startIndex?: number }) {
   draft.holdDuration = 0
   draft.lastObservations = []
   draft.perfectNoteStreak = 0
+  draft.sessionHistory = []
 }
 
 function handleStop(draft: PracticeState) {
@@ -306,6 +307,7 @@ function handleStop(draft: PracticeState) {
   draft.holdDuration = 0
   draft.lastObservations = []
   draft.perfectNoteStreak = 0
+  draft.sessionHistory = []
 }
 
 function handleNoteDetected(draft: PracticeState, payload: DetectedNote) {
