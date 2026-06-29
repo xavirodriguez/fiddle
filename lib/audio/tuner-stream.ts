@@ -18,7 +18,6 @@
 import { Observable, type Subscription } from 'rxjs'
 
 import type { PitchFrame } from '../domain/data-structures'
-import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
 import { audioPipeline } from './audio-pipeline'
 
 /**
@@ -44,14 +43,12 @@ export interface TunerStreamConfig {
  * @param _config - Optional stream configuration.
  * @returns A cold Observable of PitchFrame.
  */
-export function createTunerStream(
-  _config: TunerStreamConfig = {}
-): Observable<PitchFrame> {
+export function createTunerStream(_config: TunerStreamConfig = {}): Observable<PitchFrame> {
   return new Observable<PitchFrame>((subscriber) => {
     let pipelineSub: Subscription | null = null
 
     // Ensure the unified pipeline is initialized
-    void audioPipeline.init();
+    void audioPipeline.init()
 
     // Relay processed frames from the singleton pipeline to this subscriber
     pipelineSub = audioPipeline.pitchFrame$.subscribe({
