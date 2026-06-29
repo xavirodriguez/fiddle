@@ -1,12 +1,21 @@
 import { CircularBuffer } from 'mnemonist'
 
-import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structures'
-import {
-  type Observation,
-  type SessionReport,
-  SHARED_TECHNIQUE_METRICS,
-  type TechniqueMetrics,
-} from '../technique-types'
+import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structures';
+import { type NoteTechnique,type Observation, type SessionReport as DomainSessionReport, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
+
+/**
+ * LocalSessionReport
+ *
+ * Internal session report with counters for calculation.
+ */
+interface LocalSessionReport {
+  bestNote: string | null;
+  bestNoteCents: number;
+  worstNote: string | null;
+  worstNoteCents: number;
+  averageStability: number;
+  noteCount: number;
+}
 
 /**
  * TechniqueAgent
@@ -25,7 +34,7 @@ export class TechniqueAgent {
   private readonly centsArray: Float64Array
   private readonly rmsArray: Float64Array
 
-  private sessionReport: SessionReport = {
+  private sessionReport: LocalSessionReport = {
     bestNote: null,
     bestNoteCents: Infinity,
     worstNote: null,
@@ -198,13 +207,21 @@ export class TechniqueAgent {
    * Generates a unique collection of observations for a specific technique snapshot.
    */
 
-  getSessionReport(): Readonly<SessionReport> {
-    return this.sessionReport
+  getSessionReport(): DomainSessionReport {
+    const r = this.sessionReport;
+    return {
+      bestNote: r.bestNote,
+      bestNoteAccuracy: r.bestNoteCents,
+      worstNote: r.worstNote,
+      worstNoteAccuracy: r.worstNoteCents,
+      overallStability: r.averageStability,
+      recommendation: this.getRecommendation()
+    };
   }
 
-  getRecommendation(): string {
-    const r = this.sessionReport
-    if (r.noteCount === 0) return 'Comienza a tocar para recibir recomendaciones.'
+  private getRecommendation(): string {
+    const r = this.sessionReport;
+    if (r.noteCount === 0) return 'Comienza a tocar para recibir recomendaciones.';
 
     if (r.averageStability < 0.7) {
       return 'Enfócate en mantener el arco constante y la presión uniforme.'

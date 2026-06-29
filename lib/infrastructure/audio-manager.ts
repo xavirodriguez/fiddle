@@ -10,6 +10,7 @@ class AudioManager {
   private context: AudioContext | null = null
   private filter: BiquadFilterNode | null = null
   private compressor: DynamicsCompressorNode | null = null
+  private analyser: AnalyserNode | null = null
   private sourceNode: MediaStreamAudioSourceNode | null = null
   private stream: MediaStream | null = null
 
@@ -24,6 +25,10 @@ class AudioManager {
       latencyHint: 'interactive',
     })
 
+    // Bug 6 Fix: Ensure AnalyserNode uses 0 smoothing for raw MPM signal
+    this.analyser = this.context.createAnalyser()
+    this.analyser.smoothingTimeConstant = 0
+
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -34,10 +39,19 @@ class AudioManager {
         video: false
       })
       this.sourceNode = this.context.createMediaStreamSource(this.stream)
+      // Bug 6: Connect to analyser to allow raw signal extraction
+      this.sourceNode.connect(this.analyser)
     } catch (err) {
       console.error('[AudioManager] Failed to acquire microphone:', err)
       throw err
     }
+  }
+
+  /**
+   * Returns the AnalyserNode with 0 smoothing, or null if not yet initialized.
+   */
+  getAnalyser(): AnalyserNode | null {
+    return this.analyser
   }
 
   /**
