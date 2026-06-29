@@ -69,7 +69,7 @@ export class ToneAudioPlayer implements AudioPlayerPort {
     Tone.getTransport().cancel()
   }
 
-  async cleanup(): Promise<void> {
+  cleanup(): Promise<void> {
     this.stopAll()
     this._synth?.dispose()
     this.clickLoop?.dispose()

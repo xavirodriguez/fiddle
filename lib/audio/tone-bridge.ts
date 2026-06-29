@@ -19,7 +19,7 @@
  *    initialization might fail (e.g., user denied microphone access).
  */
 
-import { err,ok, type Result } from 'neverthrow'
+import { err, ok, type Result } from 'neverthrow'
 import * as Tone from 'tone'
 
 import { AppError, ERROR_CODES } from '@/lib/errors/app-error'
@@ -82,7 +82,7 @@ export class ToneBridge {
 
         // Ensure the transport is synchronized with the context
         // This is critical for sample-accurate scheduling
-        // @ts-ignore - Transport context is sometimes typed as read-only but must be set here
+        // @ts-expect-error - Transport context is sometimes typed as read-only but must be set here
         Tone.getTransport().context = toneContext
 
         this.isInitialized = true

@@ -62,11 +62,11 @@ export interface TechniqueMetrics {
  */
 export interface SessionReport {
   bestNote: string | null;
-  bestNoteAccuracy: number; // Lowest abs(cents)
+  bestNoteCents: number;
   worstNote: string | null;
-  worstNoteAccuracy: number; // Highest abs(cents)
-  overallStability: number; // 0-1
-  recommendation: string;
+  worstNoteCents: number;
+  averageStability: number;
+  noteCount: number;
 }
 
 /**
