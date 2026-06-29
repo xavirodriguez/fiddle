@@ -1,7 +1,8 @@
 import { type StateCreator } from 'zustand'
 
 import { type Note as TargetNote } from '@/lib/domain/exercise'
-import type { PracticeEvent,PracticeState } from '@/lib/practice-core'
+import { type DetectedNote } from '@/lib/domain/practice'
+import type { PracticeEvent, PracticeState } from '@/lib/practice-core'
 import { reducePracticeEvent } from '@/lib/practice-core'
 
 const EMPTY_EXERCISE = {
@@ -14,7 +15,7 @@ const INITIAL_PRACTICE_STATE: PracticeState = {
   status: 'idle',
   currentIndex: 0,
   detectionHistory: {
-    items: new Array(10).fill(null),
+    items: new Array<DetectedNote | null>(10).fill(null),
     head: 0,
     size: 0,
     maxSize: 10,

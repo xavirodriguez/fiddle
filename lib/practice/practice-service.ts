@@ -4,19 +4,22 @@ import { createActor } from 'xstate'
 
 import { useAppStore } from '@/stores/app-store'
 
-import { audioPipeline, type RawPitchEvent } from '../audio/audio-pipeline'
-import { type Seconds,ToneBridge } from '../audio/tone-bridge'
-import { type MutablePitchFrame, type PitchFrame,SHARED_PITCH_FRAME } from '../domain/data-structures'
-import { type Exercise,type Note as TargetNote } from '../domain/exercise'
+import { audioPipeline } from '../audio/audio-pipeline'
+import { type Seconds, ToneBridge } from '../audio/tone-bridge'
+import {
+  type MutablePitchFrame,
+  type PitchFrame,
+  SHARED_PITCH_FRAME,
+} from '../domain/data-structures'
+import { type Exercise, type Note as TargetNote } from '../domain/exercise'
 import { type Cents, frequencyToMidiRaw } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
-import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
 import { audioManager } from '../infrastructure/audio-manager'
-import { formatPitchName,MusicalNote } from '../practice-core'
+import { formatPitchName, MusicalNote } from '../practice-core'
 import { type Observation } from '../technique-types'
-import { type PracticeEvent,practiceMachine } from './practice-machine'
-import { type MusicalEvent,TimelineSynchronizer } from './timeline-synchronizer'
+import { type PracticeEvent, practiceMachine } from './practice-machine'
+import { type MusicalEvent, TimelineSynchronizer } from './timeline-synchronizer'
 
 /**
  * PracticeService
@@ -29,8 +32,8 @@ export class PracticeService {
   private readonly UPDATE_INTERVAL_SEC = 0.1
   private cachedTargetNote: TargetNote | null = null
   private cachedTargetPitch: string | null = null
-  private cachedIndex: number = -1
-  private cachedExerciseId: string = ''
+  private cachedIndex = -1
+  private cachedExerciseId = ''
   private synchronizer = new TimelineSynchronizer()
   private onNoteTriggered: ((event: MusicalEvent) => void) | null = null
   private pipelineSubscription: Subscription | null = null
@@ -41,41 +44,45 @@ export class PracticeService {
     frame: SHARED_PITCH_FRAME,
   }
 
-  private actor = createActor(practiceMachine.provide({
-    actions: {
-      notifySuccess: () => {
-        const store = useAppStore.getState()
-        const detected = mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch || '')
+  private actor = createActor(
+    practiceMachine.provide({
+      actions: {
+        notifySuccess: () => {
+          const store = useAppStore.getState()
+          const detected = mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch ?? '')
 
-        // Generate observations for the matched note
-        let observations: Observation[] = []
-        if (SHARED_PITCH_FRAME.technique) {
-          observations = audioPipeline.getTechniqueAgent().generateObservations(
-            SHARED_PITCH_FRAME.technique,
-            SHARED_PITCH_FRAME.timestamp
-          )
-        }
+          // Generate observations for the matched note
+          let observations: Observation[] = []
+          if (SHARED_PITCH_FRAME.technique) {
+            observations = audioPipeline
+              .getTechniqueAgent()
+              .generateObservations(SHARED_PITCH_FRAME.technique, SHARED_PITCH_FRAME.timestamp)
+          }
 
-        // Record the note in the technique agent for session statistics
-        audioPipeline.getTechniqueAgent().recordNote(
-          detected.pitch,
-          detected.cents,
-          SHARED_PITCH_FRAME.technique?.rmsStability ?? 1
-        );
+          // Record the note in the technique agent for session statistics
+          audioPipeline
+            .getTechniqueAgent()
+            .recordNote(
+              detected.pitch,
+              detected.cents,
+              SHARED_PITCH_FRAME.technique?.rmsStability ?? 1,
+            )
 
-        store.internalUpdate({
-          type: 'NOTE_MATCHED',
-          payload: {
-            isPerfect: Math.abs(detected.cents) < 5,
-            observations,
-            timestamp: SHARED_PITCH_FRAME.timestamp
-          },
-        })
+          store.internalUpdate({
+            type: 'NOTE_MATCHED',
+            payload: {
+              isPerfect: Math.abs(detected.cents) < 5,
+              observations,
+              timestamp: SHARED_PITCH_FRAME.timestamp,
+            },
+          })
+        },
       },
+    }),
+    {
+      input: {},
     },
-  }), {
-    input: {}
-  })
+  )
 
   async initialize(exercise: Exercise, onNoteTriggered: (event: MusicalEvent) => void) {
     // Ensure the native AudioContext is initialized first
@@ -117,7 +124,7 @@ export class PracticeService {
 
   stop() {
     this.actor.stop()
-    void audioPipeline.destroy()
+    audioPipeline.destroy().catch((err) => console.error('[AudioPipeline]', err))
     toneAudioPlayer.stopAll()
   }
 
@@ -146,7 +153,7 @@ export class PracticeService {
     ) {
       // If target changed, clear technique agent to avoid bleeding data
       if (sync.currentMidiTarget !== verification.expectedMidi) {
-        audioPipeline.getTechniqueAgent().clear();
+        audioPipeline.getTechniqueAgent().clear()
       }
 
       store.updateSync({
@@ -187,7 +194,6 @@ export class PracticeService {
     // Use pre-allocated event object
     this.actor.send(this.REUSABLE_PITCH_EVENT)
   }
-
 
   private updateTargetCache(practiceState: PracticeState | undefined) {
     if (

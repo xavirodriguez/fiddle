@@ -1,12 +1,5 @@
-/**
- * This file contains the pure, side-effect-free core logic for the violin practice mode.
- * It defines the state, events, and a reducer function to handle state transitions in an immutable way.
- * This core is decoupled from React, Zustand, OSMD, and any browser-specific APIs.
- * Refactored for branded types, strict validation, neverthrow and immer.
- */
-
-import { castDraft,produce } from 'immer'
-import { err,ok, type Result } from 'neverthrow'
+import { castDraft, produce } from 'immer'
+import { err, ok, type Result } from 'neverthrow'
 
 import type { Note as TargetNote } from '@/lib/domain/exercise'
 import type {
@@ -17,7 +10,6 @@ import type {
   PracticeStatus,
 } from '@/lib/domain/practice'
 
-import { FixedRingBuffer } from './domain/data-structures'
 import {
   DEFAULT_TUNING,
   frequencyToMidi,
@@ -351,7 +343,9 @@ function handleNoteMatched(
 ) {
   if (draft.status !== 'listening' && draft.status !== 'validating') return
 
-  const newestIndex = (draft.detectionHistory.head - 1 + draft.detectionHistory.maxSize) % draft.detectionHistory.maxSize
+  const newestIndex =
+    (draft.detectionHistory.head - 1 + draft.detectionHistory.maxSize) %
+    draft.detectionHistory.maxSize
   const newestItem = draft.detectionHistory.items[newestIndex]
   const centsError = newestItem ? Math.abs(newestItem.cents) : 100
   const isPerfect = payload?.isPerfect ?? centsError < 5
@@ -365,7 +359,7 @@ function handleNoteMatched(
       const isPerfectRepetition = draft.perfectNoteStreak >= loopSize
 
       const { drillTarget, isLoopCompleted } = evaluateDrillTarget(draft.loopRegion, {
-        isPerfect: isPerfectRepetition
+        isPerfect: isPerfectRepetition,
       })
       draft.loopRegion.drillTarget = drillTarget
       if (isLoopCompleted) {
