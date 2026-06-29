@@ -9,9 +9,16 @@ export function serializeAndCompress(value: unknown): string {
   const jsonString = superjson.stringify(value)
   const compressedBuffer = pako.deflate(jsonString)
 
-  // Avoid stack overflow from spread operator on large buffers
-  // Using TextDecoder (Latin1) for extreme performance and stack safety
-  const binaryString = new TextDecoder('latin1').decode(compressedBuffer)
+  // Bug 4: Avoid stack overflow from spread operator on large buffers
+  // Rewriting using chunked processing for extreme performance and stack safety
+  let binaryString = ''
+  const CHUNK_SIZE = 8192
+  for (let i = 0; i < compressedBuffer.length; i += CHUNK_SIZE) {
+    binaryString += String.fromCharCode.apply(
+      null,
+      compressedBuffer.subarray(i, i + CHUNK_SIZE) as unknown as number[]
+    )
+  }
 
   const base64String = btoa(binaryString)
   const result = base64String

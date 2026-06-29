@@ -311,6 +311,8 @@ function handleStop(draft: PracticeState) {
 }
 
 function handleNoteDetected(draft: PracticeState, payload: DetectedNote) {
+  // Bug 5: Zero-allocation update for detection history using ring buffer pointers.
+  // Avoids array spreads and slice() to prevent GC pressure in the hot path.
   const history = draft.detectionHistory
   history.items[history.head] = castDraft(payload)
   history.head = (history.head + 1) % history.maxSize
@@ -421,6 +423,7 @@ function evaluateDrillTarget(
     completedRepetitions = 0 // Reset on failure for "consecutive" logic
   }
 
+  // Bug 2: Loop completes after 3 perfect repetitions
   const isLoopCompleted = completedRepetitions >= 3
 
   return {
