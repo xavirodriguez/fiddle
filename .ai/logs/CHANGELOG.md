@@ -29,25 +29,21 @@
 ## [CURRENT]
 
 ### Added
-- Implementación de AMDF (Average Magnitude Difference Function) en `PitchDetector` para mitigar errores de octava en el violín (Tarea 2.3).
-- Método `setFilterFrequency` en `AudioManager` para filtros adaptativos durante la práctica (Tarea 2.2).
-- Test de integración de señal sintética para validar detección de fundamental con armónicos fuertes (Tarea 3.2).
+- **Modernized Audio Engine:** Migration of pitch detection (Pitchy MPM) and spectral analysis (Meyda) to `AudioWorklet` for zero-latency performance (Phase 3).
+- **Intelligent Technique Agent:** Advanced analysis of vibrato (Hz/cents) and bow stability (RMS variance) using sliding windows and pre-allocated buffers (Phase 7).
+- **Session Reporting:** Automatic tracking of "Best Note" and "Worst Note" based on cumulative intonation accuracy.
+- **RxJS Audio Pipeline:** Centralized reactive flow `RawPitchEvent -> NoteSegmenter -> TechniqueAgent` with `debounceTime` for stable UI feedback.
+- **Tone.js Integration:** Sample-accurate metronome and musical scheduling synchronized with the global `AudioContext` clock.
 
 ### Changed
-- Consolidación de `NoteSegmenter` utilizando XState v5 `setup`, eliminando redundancias y mejorando el debouncing (Tarea 6.3).
+- **Architecture Unification:** Refactored `AudioManager` to be the singleton source of the `AudioContext` and `MediaStream` for the entire application.
+- **Zero-Allocation Enforcement:** Strict elimination of per-frame object/array creation in the audio hot-path using buffer pools and shared singletons.
+- **Tuner Stream Refactor:** `TunerStream` now consumes processed frames from the centralized `AudioPipeline`.
 
 ### Fixed
-- Corrección de bug en el contador de frames de `NoteSegmenter`.
-- Mejora de rendimiento moviendo el procesamiento pesado DSP después de la puerta de ruido (Noise Gate).
-- Corrección de importaciones y tipos en `FixedRingBuffer` y `AudioPipeline`.
+- Fixed memory leaks in the Web Audio graph by properly disconnecting nodes from the shared source.
+- Resolved circular dependencies between `WebAudioAdapter` and `AudioPipeline`.
+- Optimized messaging between Worklet and Main thread using buffer pools and minimal structured cloning.
 
-## [UNRELEASED]
-
-### Added
-- **Technique Analysis:** Implementación de `calculateSessionReport` y `getRecommendation` en `TechniqueAgent` para feedback personalizado.
-- **Analytics:** Agregada propiedad `sessionHistory` a `PracticeState` para rastrear el desempeño nota a nota.
-- **Protocols:** Sincronización estricta con el reloj de audio (`AudioContext.currentTime`) en el historial de sesión.
-
-### Changed
-- **Performance:** Optimización del cálculo de promedios en el historial de sesión respetando mandatos de zero-allocation.
-- **Documentation:** Limpieza y sincronización masiva de `.ai/tasks/TODO.md` y `.ai/tasks/DONE.md`.
+### Removed
+- **Legacy DSP:** Complete removal of manual YIN implementation and redundant `pitch-detector.ts` (Phase 3 requirement).

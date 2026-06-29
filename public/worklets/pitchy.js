@@ -1,4 +1,4 @@
-import FFT from "fft.js";
+import FFT from "./fft.js";
 
 /**
  * @typedef {Float32Array | Float64Array | number[]} Buffer One of the supported

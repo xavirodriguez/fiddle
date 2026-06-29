@@ -6,12 +6,8 @@
  * Browser-only: never imported on the server.
  */
 
-const FFT_SIZE = 4096
-const SMOOTHING_TIME_CONSTANT = 0
-
 class AudioManager {
   private context: AudioContext | null = null
-  private analyser: AnalyserNode | null = null
   private filter: BiquadFilterNode | null = null
   private compressor: DynamicsCompressorNode | null = null
   private sourceNode: MediaStreamAudioSourceNode | null = null
@@ -24,28 +20,20 @@ class AudioManager {
   async initialize(): Promise<void> {
     if (this.context && this.context.state !== 'closed') return
 
-    this.context = new AudioContext()
-    this.analyser = this.context.createAnalyser()
-    this.analyser.fftSize = FFT_SIZE
-    this.analyser.smoothingTimeConstant = SMOOTHING_TIME_CONSTANT
-
-    // TAREA 1: Completar el Web Audio Graph (Filtros y Compresión)
-    this.compressor = this.context.createDynamicsCompressor()
-    this.compressor.threshold.value = -24
-    this.compressor.ratio.value = 3
-
-    this.filter = this.context.createBiquadFilter()
-    this.filter.type = 'lowpass'
-    this.filter.frequency.value = 3500
+    this.context = new AudioContext({
+      latencyHint: 'interactive',
+    })
 
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+        video: false
+      })
       this.sourceNode = this.context.createMediaStreamSource(this.stream)
-
-      // MediaStreamSource -> DynamicsCompressor -> BiquadFilter -> AnalyserNode
-      this.sourceNode.connect(this.compressor)
-      this.compressor.connect(this.filter)
-      this.filter.connect(this.analyser)
     } catch (err) {
       console.error('[AudioManager] Failed to acquire microphone:', err)
       throw err
@@ -60,10 +48,10 @@ class AudioManager {
   }
 
   /**
-   * Returns the AnalyserNode connected to the microphone, or null if not ready.
+   * Returns the MediaStreamSourceNode, or null if not yet initialized.
    */
-  getAnalyser(): AnalyserNode | null {
-    return this.analyser
+  getSourceNode(): MediaStreamAudioSourceNode | null {
+    return this.sourceNode
   }
 
   /**
@@ -111,7 +99,6 @@ class AudioManager {
     this.sourceNode = null
     this.compressor = null
     this.filter = null
-    this.analyser = null
     this.context = null
   }
 }

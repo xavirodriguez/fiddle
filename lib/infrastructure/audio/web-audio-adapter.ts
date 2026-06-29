@@ -1,8 +1,8 @@
 import { err,ok, type Result } from 'neverthrow';
 
-import { type RawPitchEvent } from '../../audio/audio-pipeline';
-import { type WorkerInputMessage,type WorkerOutputMessage } from './pitch-worker.types';
+import { type WorkerInputMessage } from './pitch-worker.types';
 import { AppError, ERROR_CODES } from '../../errors/app-error';
+import { audioManager } from '../audio-manager';
 import { type AudioCapturePort, type AudioDeviceEvent } from '../../ports/audio.port';
 
 /**
@@ -10,11 +10,9 @@ import { type AudioCapturePort, type AudioDeviceEvent } from '../../ports/audio.
  *
  * Implementación de AudioCapturePort utilizando la API de Web Audio Nativa.
  * Configura un grafo de audio optimizado para violín con Zero-Allocation en mente.
+ * Comparte el AudioContext y MediaStream gestionados por el AudioManager.
  */
 export class WebAudioAdapter implements AudioCapturePort {
-  private audioContext: AudioContext | null = null;
-  private stream: MediaStream | null = null;
-  private source: MediaStreamAudioSourceNode | null = null;
   private filter: BiquadFilterNode | null = null;
   private compressor: DynamicsCompressorNode | null = null;
   private workletNode: AudioWorkletNode | null = null;
@@ -23,51 +21,48 @@ export class WebAudioAdapter implements AudioCapturePort {
   constructor() {}
 
   /**
-   * Inicializa el contexto de audio. Cumple con la regla de No Throw.
+   * Inicializa el grafo de audio usando el contexto de AudioManager.
+   * Cumple con la regla de No Throw.
    */
   async initialize(): Promise<Result<void, AppError>> {
-    if (this.audioContext) return ok(undefined);
-
     try {
-      this.audioContext = new AudioContext({
-        latencyHint: 'interactive',
-      });
+      // Garantizar que AudioManager esté inicializado
+      await audioManager.initialize();
+      const ctx = audioManager.getContext();
+      const source = audioManager.getSourceNode();
+
+      if (!ctx || !source) {
+        return err(new AppError({
+          message: 'No se pudo obtener el contexto de audio del AudioManager',
+          code: ERROR_CODES.HARDWARE_NOT_FOUND,
+        }));
+      }
 
       // Carga del procesador en el hilo de audio
-      await this.audioContext.audioWorklet.addModule('/worklets/CaptureProcessor.js');
-
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-        },
-      });
-
-      this.source = this.audioContext.createMediaStreamSource(this.stream);
+      await ctx.audioWorklet.addModule('/worklets/CaptureProcessor.js');
 
       // Filtro Biquad Adaptativo (Rango Violín G3-E7)
-      this.filter = this.audioContext.createBiquadFilter();
+      this.filter = ctx.createBiquadFilter();
       this.filter.type = 'bandpass';
       this.filter.frequency.value = 1416; // Centro inicial
       this.filter.Q.value = 0.5;
 
       // Compresor para suavizar ataques
-      this.compressor = this.audioContext.createDynamicsCompressor();
+      this.compressor = ctx.createDynamicsCompressor();
       this.compressor.threshold.value = -24;
       this.compressor.knee.value = 30;
       this.compressor.ratio.value = 12;
       this.compressor.attack.value = 0.003;
       this.compressor.release.value = 0.25;
 
-      this.source.connect(this.filter);
+      source.connect(this.filter);
       this.filter.connect(this.compressor);
 
       this.emit('statechange', 'initialized');
       return ok(undefined);
     } catch (e) {
       const appError = new AppError({
-        message: e instanceof Error ? e.message : 'Error de hardware de audio',
+        message: e instanceof Error ? e.message : 'Error al inicializar WebAudioAdapter',
         code: ERROR_CODES.DATA_VALIDATION_ERROR,
       });
       this.emit('error', appError);
@@ -79,63 +74,58 @@ export class WebAudioAdapter implements AudioCapturePort {
    * Ajusta dinámicamente la frecuencia del filtro biquad.
    */
   public updateFilterFrequency(hz: number): void {
-    if (this.filter && this.audioContext) {
-      this.filter.frequency.setTargetAtTime(hz, this.audioContext.currentTime, 0.1);
+    const ctx = audioManager.getContext();
+    if (this.filter && ctx) {
+      this.filter.frequency.setTargetAtTime(hz, ctx.currentTime, 0.1);
     }
   }
 
-  async startStream(onFrame: (event: RawPitchEvent) => void): Promise<Result<void, AppError>> {
-    if (!this.audioContext || !this.compressor) {
+  async startStream(onFrame: (data: Float64Array) => void): Promise<Result<void, AppError>> {
+    const ctx = audioManager.getContext();
+    if (!ctx || !this.compressor) {
       const initResult = await this.initialize();
       if (initResult.isErr()) return initResult;
     }
 
-    if (!this.audioContext || !this.compressor) {
+    const currentCtx = audioManager.getContext();
+    if (!currentCtx || !this.compressor) {
       return err(new AppError({
         message: 'AudioContext no inicializado',
         code: ERROR_CODES.INTERNAL_ERROR,
       }));
     }
 
-    const ctx = this.audioContext;
     const comp = this.compressor;
 
-    // Reusable event object to avoid main-thread garbage
-    const eventProxy: RawPitchEvent = {
-      pitchHz: 0,
-      confidence: 0,
-      rms: 0,
-      spectralFlatness: 0,
-      spectralCentroid: 0,
-      timestamp: 0
-    };
 
     try {
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
+      if (!currentCtx) {
+        return err(new AppError({
+          message: 'AudioContext no inicializado',
+          code: ERROR_CODES.INTERNAL_ERROR,
+        }));
       }
 
-      this.workletNode = new AudioWorkletNode(ctx, 'capture-processor');
+      if (currentCtx.state === 'suspended') {
+        await currentCtx.resume();
+      }
+
+      this.workletNode = new AudioWorkletNode(currentCtx, 'capture-processor');
       this.workletNode.port.onmessage = (event: MessageEvent<Float64Array>) => {
         const data = event.data;
         if (data.length === 6) {
-          eventProxy.pitchHz = data[0];
-          eventProxy.confidence = data[1];
-          eventProxy.rms = data[2];
-          eventProxy.spectralFlatness = data[3];
-          eventProxy.spectralCentroid = data[4];
-          eventProxy.timestamp = data[5];
-          onFrame(eventProxy);
+          onFrame(data);
         }
       };
 
       // Notify the worklet about the sample rate
       this.workletNode.port.postMessage({
         type: 'init',
-        sampleRate: ctx.sampleRate
+        sampleRate: currentCtx.sampleRate
       } satisfies WorkerInputMessage);
 
       comp.connect(this.workletNode);
+      // Not connecting to destination: the worklet is an analyzer, not a generator.
       this.emit('statechange', 'streaming');
       return ok(undefined);
     } catch (e) {
@@ -152,13 +142,18 @@ export class WebAudioAdapter implements AudioCapturePort {
       this.workletNode = null;
     }
 
-    if (this.stream) {
-      this.stream.getTracks().forEach(track => track.stop());
-      this.stream = null;
+    if (this.compressor) {
+      this.compressor.disconnect();
     }
 
-    if (this.audioContext && this.audioContext.state !== 'closed') {
-      await this.audioContext.suspend();
+    if (this.filter) {
+      this.filter.disconnect();
+    }
+
+    // Desconectar del source global del AudioManager para evitar acumulación de nodos
+    const source = audioManager.getSourceNode();
+    if (source && this.filter) {
+      source.disconnect(this.filter);
     }
 
     this.emit('statechange', 'stopped');
@@ -181,10 +176,10 @@ export class WebAudioAdapter implements AudioCapturePort {
   }
 
   get sampleRate(): number {
-    return this.audioContext?.sampleRate ?? 44100;
+    return audioManager.getContext()?.sampleRate ?? 44100;
   }
 
   getCurrentTime(): number {
-    return this.audioContext?.currentTime ?? 0;
+    return audioManager.getContext()?.currentTime ?? 0;
   }
 }

@@ -1,9 +1,12 @@
+import { ok, type Result } from 'neverthrow'
 import { type Observable, Subject, type Subscription } from 'rxjs'
-import { filter, map, share, tap } from 'rxjs/operators'
+import { debounceTime, filter, map, share, tap } from 'rxjs/operators'
 import { createActor } from 'xstate'
 
 import { type PitchFrame, SHARED_PITCH_FRAME } from '../domain/data-structures'
 import { type Cents, type Hertz } from '../domain/musical-domain'
+import { type AppError } from '../errors/app-error'
+import { WebAudioAdapter } from '../infrastructure/audio/web-audio-adapter'
 import { noteSegmenterMachine } from '../practice/note-segmenter'
 import { TechniqueAgent } from '../practice/technique-agent'
 import { MusicalNote } from '../practice-core'
@@ -31,9 +34,10 @@ export interface RawPitchEvent {
  */
 export class AudioPipeline {
   private inputSubject = new Subject<RawPitchEvent>()
+  private adapter = new WebAudioAdapter()
   private segmenter = createActor(noteSegmenterMachine)
   private techniqueAgent = new TechniqueAgent()
-  private internalSubscription: Subscription
+  private internalSubscription: Subscription | null = null
 
   // Pre-allocated event objects for zero-allocation XState interaction
   private readonly PITCH_DETECTED_EVENT = { type: 'PITCH_DETECTED' as const, confidence: 0, rms: 0 }
@@ -50,53 +54,110 @@ export class AudioPipeline {
 
     // Internal pipeline setup
     this.pitchFrame$ = this.inputSubject.asObservable().pipe(
-      // 1. Note Segmentation (Side-effect: update machine state)
-      tap(event => {
-        const isStrong = event.pitchHz > 0 && event.confidence > 0.8 && event.rms > 0.01;
-        if (isStrong) {
-          const e = this.PITCH_DETECTED_EVENT;
-          e.confidence = event.confidence;
-          e.rms = event.rms;
-          this.segmenter.send(e);
-        } else {
-          this.segmenter.send(this.PITCH_LOST_EVENT);
-        }
-      }),
+      // 1. Note Segmentation Stage
+      tap((event) => this.processSegmentation(event)),
 
-      // 2. Filter based on machine state (Only emit when in NOTE or NOTE_LOST state)
+      // 2. Filter Stage: Only proceed when in NOTE or NOTE_LOST states
       filter(() => {
         const state = this.segmenter.getSnapshot().value
         return state === 'NOTE' || state === 'NOTE_LOST'
       }),
 
-      // 3. Agent Stage: Zero-allocation mapping & Technique Analysis
-      map(event => {
-        // Calculate Cents Deviation using MusicalNote core utility
-        const note = MusicalNote.fromFrequencyShared(event.pitchHz);
+      // 3. Agent Stage: Technique Analysis & Frame Mapping (Zero Allocation)
+      map((event) => this.processAnalysis(event)),
 
-        SHARED_PITCH_FRAME.frequency = event.pitchHz as Hertz
-        SHARED_PITCH_FRAME.confidence = event.confidence
-        SHARED_PITCH_FRAME.timestamp = event.timestamp
-        SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
+      // 4. Multicast Stage: Share the stream across multiple subscribers
+      share(),
+    )
 
-        // 4. Technique Analysis (Side effect: updates SHARED_TECHNIQUE_METRICS)
-        SHARED_PITCH_FRAME.technique = this.techniqueAgent.analyze(
-          SHARED_PITCH_FRAME,
-          event.rms,
-          event.spectralFlatness,
-          event.spectralCentroid
-        ) ?? undefined;
-
-        return SHARED_PITCH_FRAME
-      }),
-
-      // 5. Multicast for multiple subscribers (UI, Practice Service, etc.)
+    /**
+     * Debounced stream for stable observations (UI / Feedback).
+     * This prevents flickering in the feedback engine by requiring
+     * a short period of stability.
+     */
+    this.stablePitchFrame$ = this.pitchFrame$.pipe(
+      debounceTime(50),
       share()
     );
+  }
 
-    // We must subscribe to the pipe to keep the side-effects (segmenter) running
-    // even if there are no external subscribers at a given moment.
-    this.internalSubscription = this.pitchFrame$.subscribe();
+  public readonly stablePitchFrame$: Observable<PitchFrame>;
+
+  /**
+   * Internal logic for note segmentation based on raw signal strength.
+   */
+  private processSegmentation(event: RawPitchEvent): void {
+    const isStrong = event.pitchHz > 0 && event.confidence > 0.8 && event.rms > 0.01
+    if (isStrong) {
+      const e = this.PITCH_DETECTED_EVENT
+      e.confidence = event.confidence
+      e.rms = event.rms
+      this.segmenter.send(e)
+    } else {
+      this.segmenter.send(this.PITCH_LOST_EVENT)
+    }
+  }
+
+  /**
+   * Internal logic for technique analysis and mapping to PitchFrame.
+   * Reuses SHARED_PITCH_FRAME to satisfy the Zero-Allocation mandate.
+   */
+  private processAnalysis(event: RawPitchEvent): PitchFrame {
+    const note = MusicalNote.fromFrequencyShared(event.pitchHz)
+
+    SHARED_PITCH_FRAME.frequency = event.pitchHz as Hertz
+    SHARED_PITCH_FRAME.confidence = event.confidence
+    SHARED_PITCH_FRAME.timestamp = event.timestamp
+    SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
+
+    // Technique Analysis
+    SHARED_PITCH_FRAME.technique =
+      this.techniqueAgent.analyze(
+        SHARED_PITCH_FRAME,
+        event.rms,
+        event.spectralFlatness,
+        event.spectralCentroid,
+      ) ?? undefined
+
+    return SHARED_PITCH_FRAME
+  }
+
+  /**
+   * Initializes the pipeline and starts the hardware audio stream.
+   * Ensures only one hardware adapter is active and feeding the pipeline.
+   */
+  public async init(): Promise<Result<void, AppError>> {
+    if (this.internalSubscription) return ok(undefined)
+
+    // Pre-allocated event object to avoid allocations in the hot callback
+    const eventProxy: RawPitchEvent = {
+      pitchHz: 0,
+      confidence: 0,
+      rms: 0,
+      spectralFlatness: 0,
+      spectralCentroid: 0,
+      timestamp: 0,
+    }
+
+    // 1. Initialize hardware via adapter
+    const initResult = await this.adapter.initialize()
+    if (initResult.isErr()) return initResult
+
+    const streamResult = await this.adapter.startStream((data: Float64Array) => {
+      eventProxy.pitchHz = data[0]
+      eventProxy.confidence = data[1]
+      eventProxy.rms = data[2]
+      eventProxy.spectralFlatness = data[3]
+      eventProxy.spectralCentroid = data[4]
+      eventProxy.timestamp = data[5]
+      this.push(eventProxy)
+    })
+
+    if (streamResult.isErr()) return streamResult
+
+    // 2. Start internal processing
+    this.internalSubscription = this.pitchFrame$.subscribe()
+    return ok(undefined)
   }
 
   /**
@@ -110,12 +171,18 @@ export class AudioPipeline {
     return this.techniqueAgent
   }
 
+  getAdapter(): WebAudioAdapter {
+    return this.adapter
+  }
+
   /**
-   * Cleanup resources
+   * Cleanup resources and stop hardware stream.
    */
-  destroy(): void {
-    this.internalSubscription.unsubscribe()
+  async destroy(): Promise<void> {
+    this.internalSubscription?.unsubscribe()
+    this.internalSubscription = null
     this.segmenter.stop()
+    await this.adapter.stopStream()
     this.inputSubject.complete()
   }
 }

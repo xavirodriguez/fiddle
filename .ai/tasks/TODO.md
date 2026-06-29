@@ -141,10 +141,10 @@
 **Asignado a:** `AI & Signal Specialist`
 
 * [x] **7.1. Agente de Análisis de Técnica (Domain)**
-    * [x] Implementar el `TechniqueAgent` usando `simple-statistics` para detectar:
+    * [x] Implementar el `TechniqueAgent` usando `simple-statistics` (manual zero-allocation) para detectar:
         * [x] **Estabilidad de Tono:** Varianza y desviación estándar de los *cents* durante una nota mantenida.
-        * [x] **Vibrato:** Análisis de frecuencia fundamental (regresión sinusoidal simple) para medir velocidad y amplitud del vibrato.
-        * [x] **Estabilidad de Arco (Voz/Violín):** Análisis de la envolvente de amplitud (RMS) para detectar "temblores" o cortes no deseados.
+        * [x] **Vibrato:** Análisis de cruces por cero de la media para medir velocidad y amplitud del vibrato.
+        * [x] **Estabilidad de Arco (Voz/Violín):** Análisis de la envolvente de amplitud (RMS) para detectar arqueo inestable.
 
 * [x] **7.2. Extracción de Timbre (Infrastructure)**
     * [x] Configurar `meyda` para extraer features espectrales:

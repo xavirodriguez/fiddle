@@ -19,9 +19,9 @@ export interface AudioCapturePort {
 
   /**
    * Starts capturing audio and streaming it to the processing pipeline.
-   * @param onFrame - Callback for each captured audio detection event.
+   * @param onFrame - Callback for each captured audio detection event (Raw Float64Array for performance).
    */
-  startStream(onFrame: (event: RawPitchEvent) => void): Promise<Result<void, AppError>>
+  startStream(onFrame: (data: Float64Array) => void): Promise<Result<void, AppError>>
 
   /**
    * Stops the current audio stream and releases hardware resources.

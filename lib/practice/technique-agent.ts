@@ -4,6 +4,20 @@ import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structur
 import { type NoteTechnique,type Observation, type SessionReport, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
 
 /**
+ * SessionReport
+ *
+ * Tracks historical data for the current session.
+ */
+export interface SessionReport {
+  bestNote: string | null;
+  bestNoteCents: number;
+  worstNote: string | null;
+  worstNoteCents: number;
+  averageStability: number;
+  noteCount: number;
+}
+
+/**
  * TechniqueAgent
  *
  * Analyzes a window of PitchFrames to extract musical technique insights.
@@ -14,21 +28,32 @@ export class TechniqueAgent {
   private readonly windowSize: number;
   private readonly centsBuffer: CircularBuffer<number>;
   private readonly rmsBuffer: CircularBuffer<number>;
+  private readonly timestampBuffer: CircularBuffer<number>;
 
   // Pre-allocated arrays for single-pass analysis
   private readonly centsArray: Float64Array;
   private readonly rmsArray: Float64Array;
 
+  private sessionReport: SessionReport = {
+    bestNote: null,
+    bestNoteCents: Infinity,
+    worstNote: null,
+    worstNoteCents: 0,
+    averageStability: 0,
+    noteCount: 0,
+  };
+
   constructor(windowSize = 30) {
     this.windowSize = windowSize;
     this.centsBuffer = new CircularBuffer(Float64Array, windowSize);
     this.rmsBuffer = new CircularBuffer(Float32Array, windowSize);
+    this.timestampBuffer = new CircularBuffer(Float64Array, windowSize);
     this.centsArray = new Float64Array(windowSize);
     this.rmsArray = new Float64Array(windowSize);
   }
 
   /**
-   * Processes a new frame and returns metrics if the window is full.
+   * Processes a new frame and returns metrics.
    * Uses SHARED_TECHNIQUE_METRICS to avoid object allocation.
    */
   analyze(
@@ -39,12 +64,13 @@ export class TechniqueAgent {
   ): TechniqueMetrics | null {
     this.centsBuffer.push(frame.centsDeviation);
     this.rmsBuffer.push(rms);
+    this.timestampBuffer.push(frame.timestamp);
 
     if (this.centsBuffer.size < this.windowSize) {
       return null;
     }
 
-    const n = this.windowSize;
+    const n = this.centsBuffer.size;
     let sumCents = 0;
     let sumRms = 0;
 
@@ -105,9 +131,18 @@ export class TechniqueAgent {
     }
 
     const vibratoDepth = maxCents - minCents;
-    const vibratoRate = (crossings * 60) / (2 * n); // Assuming 60fps
 
-    // 4. Update shared instance (ZERO ALLOCATION)
+    // Calculate actual rate based on timestamps in the sliding window
+    const firstTimestamp = this.timestampBuffer.get(0) ?? 0;
+    const lastTimestamp = this.timestampBuffer.get(n - 1) ?? 0;
+    const duration = lastTimestamp - firstTimestamp;
+    const vibratoRate = duration > 0 ? (crossings) / (2 * duration) : 0;
+
+    // 4. Bow Stability (based on RMS variance)
+    // varianceRms is already calculated. High variance means unstable bowing.
+    const bowStability = Math.max(0, 1 - Math.sqrt(varianceRms) * 20); // Normalized 0-1
+
+    // 5. Update shared instance (ZERO ALLOCATION)
     const m = SHARED_TECHNIQUE_METRICS;
     m.pitchVariance = varianceCents;
     m.pitchStdDev = stdDevCents;
@@ -115,13 +150,18 @@ export class TechniqueAgent {
     m.isStable = stdDevCents < VIOLIN_TOLERANCE_CENTS;
     m.vibratoDepth = vibratoDepth;
     m.vibratoRate = vibratoRate;
-    m.rmsStability = Math.max(0, 1 - varianceRms * 100);
+    m.rmsStability = bowStability;
     m.spectralFlatness = spectralFlatness;
     m.spectralCentroid = spectralCentroid;
 
     return m;
   }
 
+  /**
+   * Generates observations for a specific technique snapshot.
+   * NOTE: This should NOT be called in the per-frame hot-path to avoid allocations.
+   * It is intended for discrete feedback events (e.g., when a note is matched).
+   */
   generateObservations(metrics: TechniqueMetrics, timestamp: number): Observation[] {
     const obs: Observation[] = [];
     if (Math.abs(metrics.pitchStdDev) > VIOLIN_TOLERANCE_CENTS) {
@@ -136,74 +176,74 @@ export class TechniqueAgent {
     if (metrics.vibratoDepth > 10 && metrics.vibratoRate > 4 && metrics.vibratoRate < 7) {
       obs.push({ category: 'vibrato', severity: 'info', message: 'Buen vibrato', timestamp });
     }
+    if (metrics.rmsStability < 0.6) {
+      obs.push({ category: 'bowing', severity: 'warning', message: 'Arqueo inestable', timestamp });
+    }
     return obs;
   }
 
   /**
-   * Calculates a SessionReport based on session history.
+   * Updates session statistics with a newly completed note.
    */
-  calculateSessionReport(history: Array<{ pitch: string; avgCents: number; isPerfect: boolean }>): SessionReport {
-    if (history.length === 0) {
-      return {
-        bestNote: null,
-        bestNoteAccuracy: 100,
-        worstNote: null,
-        worstNoteAccuracy: 0,
-        overallStability: 0,
-        recommendation: 'Comienza a practicar para recibir recomendaciones.'
-      };
+  recordNote(noteName: string, avgCents: number, stability: number): void {
+    const absCents = Math.abs(avgCents);
+    const r = this.sessionReport;
+
+    if (absCents < r.bestNoteCents) {
+      r.bestNote = noteName;
+      r.bestNoteCents = absCents;
     }
 
-    let bestNote = history[0].pitch;
-    let bestAcc = Math.abs(history[0].avgCents);
-    let worstNote = history[0].pitch;
-    let worstAcc = Math.abs(history[0].avgCents);
-    let perfectCount = 0;
-
-    for (const entry of history) {
-      const acc = Math.abs(entry.avgCents);
-      if (acc < bestAcc) {
-        bestAcc = acc;
-        bestNote = entry.pitch;
-      }
-      if (acc > worstAcc) {
-        worstAcc = acc;
-        worstNote = entry.pitch;
-      }
-      if (entry.isPerfect) perfectCount++;
+    if (absCents > r.worstNoteCents) {
+      r.worstNote = noteName;
+      r.worstNoteCents = absCents;
     }
 
-    const report: SessionReport = {
-      bestNote,
-      bestNoteAccuracy: bestAcc,
-      worstNote,
-      worstNoteAccuracy: worstAcc,
-      overallStability: perfectCount / history.length,
-      recommendation: ''
-    };
-
-    report.recommendation = this.getRecommendation(report);
-    return report;
+    r.averageStability = (r.averageStability * r.noteCount + stability) / (r.noteCount + 1);
+    r.noteCount++;
   }
 
   /**
-   * Generates a human-readable recommendation based on aggregate session metrics.
+   * Generates a unique collection of observations for a specific technique snapshot.
    */
-  getRecommendation(report: SessionReport): string {
-    if (report.overallStability < 0.5) {
-      return 'Enfócate en mantener el arco constante y una presión estable.';
+
+  getSessionReport(): Readonly<SessionReport> {
+    return this.sessionReport;
+  }
+
+  getRecommendation(): string {
+    const r = this.sessionReport;
+    if (r.noteCount === 0) return 'Comienza a tocar para recibir recomendaciones.';
+
+    if (r.averageStability < 0.7) {
+      return 'Enfócate en mantener el arco constante y la presión uniforme.';
     }
-    if (report.worstNoteAccuracy > 15) {
-      return `La nota ${report.worstNote} necesita más precisión. Practica escalas lentamente.`;
+
+    if (r.worstNoteCents > 15) {
+      return `La nota ${r.worstNote} está dándote problemas. Intenta practicarla lentamente.`;
     }
-    if (report.bestNoteAccuracy < 5 && report.overallStability > 0.8) {
-      return '¡Excelente estabilidad! Prueba a aumentar el tempo del ejercicio.';
+
+    if (r.bestNoteCents < 5 && r.averageStability > 0.9) {
+      return '¡Excelente técnica! Intenta añadir vibrato para mayor expresividad.';
     }
-    return 'Buen progreso. Mantén la concentración en la afinación de las notas agudas.';
+
+    return 'Sigue así, mantén la concentración en la afinación.';
   }
 
   clear(): void {
     this.centsBuffer.clear();
     this.rmsBuffer.clear();
+    this.timestampBuffer.clear();
+  }
+
+  resetSession(): void {
+    this.sessionReport = {
+      bestNote: null,
+      bestNoteCents: Infinity,
+      worstNote: null,
+      worstNoteCents: 0,
+      averageStability: 0,
+      noteCount: 0,
+    };
   }
 }
