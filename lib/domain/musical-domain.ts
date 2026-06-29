@@ -1,9 +1,11 @@
 /**
  * Núcleo Matemático e Inmutable del Dominio Musical
  *
- * Este módulo proporciona las bases matemáticas fundamentales para el análisis
- * de afinación, utilizando tipos nominales para seguridad de unidades y
+ * Proporciona las bases matemáticas fundamentales para el análisis de afinación,
+ * utilizando tipos nominales (Branding) para seguridad de unidades y
  * Neverthrow para el manejo funcional de errores.
+ *
+ * @packageDocumentation
  */
 
 import { err, ok, type Result } from 'neverthrow';
@@ -11,39 +13,52 @@ import { z } from 'zod';
 
 import { AppError, ERROR_CODES } from '../errors/app-error';
 
-/**
- * Tipos Nominales (Branding) para prevenir la mezcla accidental de unidades.
- */
-export type Hertz = number & { readonly __brand: 'Hertz' };
-export type Cents = number & { readonly __brand: 'Cents' };
-export type MidiNote = number & { readonly __brand: 'MidiNote' };
+// ---------------------------------------------------------------------------
+// Tipos Nominales (Branding)
+// ---------------------------------------------------------------------------
 
-/**
- * Esquemas de Validación (Zod)
- */
+declare const HertzSymbol: unique symbol;
+/** Representa una frecuencia física en Hercios. */
+export type Hertz = number & { readonly [HertzSymbol]: typeof HertzSymbol };
+
+declare const CentsSymbol: unique symbol;
+/** Representa una desviación relativa en Cents. */
+export type Cents = number & { readonly [CentsSymbol]: typeof CentsSymbol };
+
+declare const MidiNoteSymbol: unique symbol;
+/** Representa una nota MIDI (puede ser fraccional para microtonalidad). */
+export type MidiNote = number & { readonly [MidiNoteSymbol]: typeof MidiNoteSymbol };
+
+// ---------------------------------------------------------------------------
+// Esquemas de Validación (Zod)
+// ---------------------------------------------------------------------------
+
 const HertzSchema = z.number().finite().positive();
 const CentsSchema = z.number().finite();
 const MidiNoteSchema = z.number().finite().min(0).max(127);
 
-/**
- * Configuración de Afinación
- */
+// ---------------------------------------------------------------------------
+// Tipos y Constantes
+// ---------------------------------------------------------------------------
+
+/** Configuración de referencia para la afinación de la sesión. */
 export interface TuningConfig {
+  /** Frecuencia de referencia para la nota A4. */
   readonly a4Frequency: Hertz;
 }
 
+/** Afinación estándar de referencia internacional (A4 = 440Hz). */
 export const DEFAULT_TUNING: TuningConfig = {
   a4Frequency: 440 as Hertz,
 };
 
-/**
- * Factorías y Validadores
- */
+// ---------------------------------------------------------------------------
+// Factorías con Validación
+// ---------------------------------------------------------------------------
 
 /**
  * Crea un valor de frecuencia en Hertz.
- * @param value - Valor numérico en hercios.
- * @returns Result con Hertz o AppError.
+ * @param value - Valor numérico.
  */
 export function makeHertz(value: number): Result<Hertz, AppError> {
   const result = HertzSchema.safeParse(value);
@@ -60,8 +75,7 @@ export function makeHertz(value: number): Result<Hertz, AppError> {
 
 /**
  * Crea un valor de desviación en Cents.
- * @param value - Valor numérico en cents.
- * @returns Result con Cents o AppError.
+ * @param value - Valor numérico.
  */
 export function makeCents(value: number): Result<Cents, AppError> {
   const result = CentsSchema.safeParse(value);
@@ -77,9 +91,8 @@ export function makeCents(value: number): Result<Cents, AppError> {
 }
 
 /**
- * Crea una nota MIDI. Soporta valores fraccionales para precisión microtonal.
- * @param value - Valor numérico de la nota MIDI (0-127).
- * @returns Result con MidiNote o AppError.
+ * Crea una nota MIDI con soporte fraccional.
+ * @param value - Valor numérico (0-127).
  */
 export function makeMidiNote(value: number): Result<MidiNote, AppError> {
   const result = MidiNoteSchema.safeParse(value);
@@ -94,22 +107,13 @@ export function makeMidiNote(value: number): Result<MidiNote, AppError> {
   return ok(value as MidiNote);
 }
 
-/**
- * Factory para TuningConfig.
- */
-export function makeTuningConfig(a4Frequency: number): Result<TuningConfig, AppError> {
-  return makeHertz(a4Frequency).map((hz) => ({ a4Frequency: hz }));
-}
+// ---------------------------------------------------------------------------
+// Fórmulas de Conversión (Master Clock: AudioContext.currentTime)
+// ---------------------------------------------------------------------------
 
 /**
- * Fórmulas de Conversión Exacta Bidireccional (Logaritmo Base 2)
- *
- * m = 12 * log2(f / f_A4) + 69
- * f = f_A4 * 2^((m - 69) / 12)
- */
-
-/**
- * Convierte frecuencia en Hertz a nota MIDI (fraccional).
+ * Convierte frecuencia (Hz) a nota MIDI usando logaritmo base 2.
+ * Fórmula: m = 12 * log2(f / f_A4) + 69
  */
 export function frequencyToMidi(
   frequency: Hertz,
@@ -118,29 +122,18 @@ export function frequencyToMidi(
   if (frequency <= 0) {
     return err(
       new AppError({
-        message: 'La frecuencia debe ser mayor que cero para la conversión MIDI.',
+        message: 'Frecuencia no positiva para conversión MIDI.',
         code: ERROR_CODES.DATA_VALIDATION_ERROR,
       })
     );
   }
-
   const midiValue = 12 * Math.log2(frequency / config.a4Frequency) + 69;
   return makeMidiNote(midiValue);
 }
 
 /**
- * Versión de alto rendimiento (Zero-Allocation) de frequencyToMidi.
- * @internal
- */
-export function frequencyToMidiRaw(
-  frequency: Hertz,
-  config: TuningConfig = DEFAULT_TUNING
-): MidiNote {
-  return (12 * Math.log2(frequency / config.a4Frequency) + 69) as MidiNote;
-}
-
-/**
- * Convierte nota MIDI (fraccional) a Hertz.
+ * Convierte nota MIDI a frecuencia (Hz).
+ * Fórmula: f = f_A4 * 2^((m - 69) / 12)
  */
 export function midiToFrequency(
   midi: MidiNote,
@@ -150,31 +143,49 @@ export function midiToFrequency(
   return makeHertz(hertzValue);
 }
 
-/**
- * Calcula la desviación en cents entre una nota medida y una nota objetivo.
- * Formula: cents = (midi_medida - midi_objetivo) * 100
- */
-export function calculateCentsDifference(measured: MidiNote, target: MidiNote): Cents {
-  return ((measured - target) * 100) as Cents;
-}
+// ---------------------------------------------------------------------------
+// Versiones RAW (Zero-Allocation / Hot Path)
+// ---------------------------------------------------------------------------
 
 /**
- * Utilidad de interpolación lineal (Lerp) para suavizado.
+ * Conversión rápida Hz -> MIDI sin validación ni boxing de Result.
  * @internal
  */
-export function lerp(start: number, end: number, t: number): number {
-  return start + (end - start) * t;
+export function frequencyToMidiRaw(
+  frequency: number,
+  a4Freq: number = DEFAULT_TUNING.a4Frequency
+): number {
+  return 12 * Math.log2(frequency / a4Freq) + 69;
 }
 
 /**
- * Normaliza y valida una alteración musical.
- * -1 (bemol), 0 (becuadro/natural), 1 (sostenido).
+ * Conversión rápida MIDI -> Hz sin validación ni boxing de Result.
+ * @internal
  */
+export function midiToFrequencyRaw(
+  midi: number,
+  a4Freq: number = DEFAULT_TUNING.a4Frequency
+): number {
+  return a4Freq * Math.pow(2, (midi - 69) / 12);
+}
+
+/**
+ * Calcula la desviación en cents entre dos puntos MIDI.
+ */
+export function calculateCentsDifference(measured: number, target: number): number {
+  return (measured - target) * 100;
+}
+
+// ---------------------------------------------------------------------------
+// Utilidades de Dominio
+// ---------------------------------------------------------------------------
+
+/** Normalización de alteraciones musicales (-1, 0, 1). */
 export function normalizeAccidental(alter: number): Result<number, AppError> {
   if (alter !== -1 && alter !== 0 && alter !== 1) {
     return err(
       new AppError({
-        message: `Alteración inválida: ${alter}. Se esperaba -1, 0 o 1.`,
+        message: `Alteración ${alter} inválida.`,
         code: ERROR_CODES.DATA_VALIDATION_ERROR,
       })
     );
