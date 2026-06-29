@@ -39,9 +39,9 @@
 * [x] Declarar la interfaz `PitchDetectorWorkerPort` para definir el intercambio de datos con el hilo asíncrono.
 
 
-* [ ] **2.2. Implementación del Grafo de Nodos Web Audio API**
-* [ ] Configurar el nodo `BiquadFilterNode` adaptativo. *Nota para violín:* El rango del violín va desde la cuerda Sol (G3 = 196Hz) hasta armónicos altos (E7 = 2637Hz). El filtro paso-bajo debe ajustarse dinámicamente según el ejercicio elegido en lugar de ser fijo.
-* [ ] Configurar el `DynamicsCompressorNode` para atenuar los ataques agresivos del arco del violín y estabilizar el aire en la voz.
+* [x] **2.2. Implementación del Grafo de Nodos Web Audio API**
+* [x] Configurar el nodo `BiquadFilterNode` adaptativo. *Nota para violín:* El rango del violín va desde la cuerda Sol (G3 = 196Hz) hasta armónicos altos (E7 = 2637Hz). El filtro paso-bajo debe ajustarse dinámicamente según el ejercicio elegido en lugar de ser fijo.
+* [x] Configurar el `DynamicsCompressorNode` para atenuar los ataques agresivos del arco del violín y estabilizar el aire en la voz.
 
 
 * [x] **2.3. Creación del Web Worker Concurrente (`CaptureProcessor.js`)**
@@ -63,9 +63,9 @@
 * [x] Comprobar que los cálculos de *cents* manejen desviaciones tanto positivas (agudo) como negativas (grave) con precisión de 4 decimales.
 
 
-* [ ] **3.2. Generador de Señales Sintéticas de Prueba**
-* [ ] Escribir un script utilitario que llene un `Float32Array` con ondas senoidales perfectas (ej. 440Hz puro) y verificar que el Worker devuelva exactamente la nota A4 con confianza $> 0.98$.
-* [ ] **Test de Estrés de Violín:** Generar una señal compuesta que simule un violín desafinado: mezclar una frecuencia fundamental de 220Hz con un armónico de 440Hz que tenga el doble de volumen. Verificar que el algoritmo detecte 220Hz (A3) y no caiga en el error de la octava superior.
+* [x] **3.2. Generador de Señales Sintéticas de Prueba**
+* [x] Escribir un script utilitario que llene un `Float32Array` con ondas senoidales perfectas (ej. 440Hz puro) y verificar que el Worker devuelva exactamente la nota A4 con confianza $> 0.98$.
+* [x] **Test de Estrés de Violín:** Generar una señal compuesta que simule un violín desafinado: mezclar una frecuencia fundamental de 220Hz con un armónico de 440Hz que tenga el doble de volumen. Verificar que el algoritmo detecte 220Hz (A3) y no caiga en el error de la octava superior.
 
 
 
@@ -163,13 +163,13 @@
 **Objetivo:** Centralizar la gestión del estado y garantizar una persistencia robusta y escalable.
 **Asignado a:** `Fullstack Architect`
 
-* [ ] **8.1. Consolidación del Almacenamiento de Estado (Adapters)**
-    * [ ] Unificar los 8 stores actuales de Zustand en un único `GlobalStore` usando Slices o migrar a `@tanstack/store` para una integración más profunda con el pipeline reactivo.
-    * [ ] Implementar selectores memorizados para evitar re-renderizados innecesarios en la UI de alta frecuencia.
+* [x] **8.1. Consolidación del Almacenamiento de Estado (Adapters)**
+    * [x] Unificar los 8 stores actuales de Zustand en un único `GlobalStore` usando Slices o migrar a `@tanstack/store` para una integración más profunda con el pipeline reactivo.
+    * [x] Implementar selectores memorizados para evitar re-renderizados innecesarios en la UI de alta frecuencia.
 
-* [ ] **8.2. Adaptador de Persistencia de Alta Disponibilidad (Infrastructure)**
-    * [ ] Implementar un sistema de versionado de esquemas en `PersistenceCore` para manejar migraciones de datos de usuario.
-    * [ ] Crear una cola de persistencia asíncrona que priorice la fluidez del juego frente a la escritura en disco.
+* [x] **8.2. Adaptador de Persistencia de Alta Disponibilidad (Infrastructure)**
+    * [x] Implementar un sistema de versionado de esquemas en `PersistenceCore` para manejar migraciones de datos de usuario.
+    * [x] Crear una cola de persistencia asíncrona que priorice la fluidez del juego frente a la escritura en disco.
 
 * [ ] **8.3. Visualización de Progreso y Analíticas (Application/Adapters)**
     * [ ] Crear estructuras de datos para tendencias a largo plazo (ej. mejora en la afinación de la cuerda Sol durante 30 días).

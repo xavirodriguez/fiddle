@@ -13,11 +13,17 @@ const EMPTY_EXERCISE = {
 const INITIAL_PRACTICE_STATE: PracticeState = {
   status: 'idle',
   currentIndex: 0,
-  detectionHistory: [],
+  detectionHistory: {
+    items: new Array(10).fill(null),
+    head: 0,
+    size: 0,
+    maxSize: 10,
+  },
   holdDuration: 0,
   lastObservations: [],
   perfectNoteStreak: 0,
   exercise: EMPTY_EXERCISE,
+  sessionHistory: [],
   loopRegion: {
     isEnabled: false,
     startNoteIndex: 0,

@@ -48,7 +48,7 @@ export class PracticeService {
         const detected = mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch || '')
 
         // Generate observations for the matched note
-        let observations: any[] = []
+        let observations: Observation[] = []
         if (SHARED_PITCH_FRAME.technique) {
           observations = audioPipeline.getTechniqueAgent().generateObservations(
             SHARED_PITCH_FRAME.technique,
@@ -68,6 +68,7 @@ export class PracticeService {
           payload: {
             isPerfect: Math.abs(detected.cents) < 5,
             observations,
+            timestamp: SHARED_PITCH_FRAME.timestamp
           },
         })
       },
