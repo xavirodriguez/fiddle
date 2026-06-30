@@ -81,9 +81,15 @@ export class TimelineSynchronizer {
   /**
    * Compiles an exercise into a deterministic timeline.
    *
-   * Complexity Analysis:
-   * - Temporal: O(N) where N is the number of notes in the exercise.
-   * - Spatial: O(N) to store the compiled events.
+   * ARCHITECTURAL DESIGN:
+   * 1. Drift Mitigation:
+   *    Instead of calculating `currentTime += duration` in each step (which
+   *    compounds floating point errors), we calculate the absolute start time
+   *    of each note based on its cumulative beat position.
+   *
+   * 2. Complexity Analysis:
+   *    - Temporal Complexity: O(N), where N is the number of notes.
+   *    - Spatial Complexity: O(N), to store the linear event array.
    */
   compile(exercise: Exercise): Result<void, AppError> {
     try {
@@ -91,7 +97,7 @@ export class TimelineSynchronizer {
       this.timeline = []
       this.currentEventPointer = 0
 
-      let currentTime = 0
+      let totalBeats = 0
       const secondsPerBeat = 60 / this.exerciseBpm
 
       exercise.notes.forEach((note, index) => {
@@ -99,17 +105,18 @@ export class TimelineSynchronizer {
         const musicalNote = MusicalNote.fromName(noteName)
 
         const durationSeconds = note.duration * secondsPerBeat
+        const startTimeSeconds = totalBeats * secondsPerBeat
 
         this.timeline.push({
           id: note.id,
           midiNote: musicalNote.midiNumber,
-          startTime: currentTime as Seconds,
+          startTime: startTimeSeconds as Seconds,
           duration: durationSeconds as Seconds,
           noteIndex: index,
           measureIndex: Math.floor(index / 4), // Fallback: assumes 4/4 if not provided
         })
 
-        currentTime += durationSeconds
+        totalBeats += note.duration
       })
 
       return ok(undefined)
@@ -136,16 +143,32 @@ export class TimelineSynchronizer {
   }
 
   /**
-   * Verifies a detected pitch against the timeline in O(1).
-   * Uses a shared mutable object to ensure zero-allocation in the hot path.
+   * Verifies a detected pitch against the timeline.
+   *
+   * DESIGN DECISIONS & PERFORMANCE:
+   *
+   * 1. O(1) Verification:
+   *    Uses an incremental pointer (`currentEventPointer`). Since musical
+   *    performance is sequential, we only need to check the current and
+   *    next event. This avoids O(N) lookups in every audio frame.
+   *
+   * 2. Zero-Allocation:
+   *    Mutates the `SHARED_VERIFICATION_RESULT` singleton. This is critical
+   *    for 60 FPS performance as it avoids triggering GC during the hot path.
+   *
+   * 3. Temporal Drift Sources & Mitigation:
+   *    - Source: Variable main-thread latency (Jitter).
+   *      Mitigation: All timing is referenced to the AudioContext clock (`currentTime`).
+   *    - Source: Floating point accumulation error.
+   *      Mitigation: `compile()` uses cumulative beat offsets to ensure absolute precision.
+   *
+   * Complexity Analysis:
+   * - Temporal: O(1) amortized.
+   * - Spatial: O(1) (zero-allocation).
    *
    * @param currentTime - Current audio clock time in seconds.
    * @param detectedMidi - The MIDI note currently detected from the mic.
-   * @param tolerance - Maximum allowed timing deviation (default 100ms).
-   *
-   * Complexity Analysis:
-   * - Temporal: O(1) average case, assuming sequential playback.
-   * - Spatial: O(1) as it reuses a singleton result object.
+   * @param tolerance - Maximum allowed timing deviation (default 150ms).
    */
   verify(
     currentTime: Seconds,

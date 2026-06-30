@@ -148,7 +148,7 @@ export function midiToFrequency(
 // ---------------------------------------------------------------------------
 
 /**
- * Conversión rápida Hz -> MIDI sin validación ni boxing de Result.
+ * Conversión rápida Hz \> MIDI sin validación ni boxing de Result.
  * @internal
  */
 export function frequencyToMidiRaw(
@@ -159,7 +159,7 @@ export function frequencyToMidiRaw(
 }
 
 /**
- * Conversión rápida MIDI -> Hz sin validación ni boxing de Result.
+ * Conversión rápida MIDI \> Hz sin validación ni boxing de Result.
  * @internal
  */
 export function midiToFrequencyRaw(

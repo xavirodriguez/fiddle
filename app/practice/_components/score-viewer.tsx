@@ -89,14 +89,25 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
      * Expose imperative API to parents.
      *
      * DESIGN DECISIONS & PERFORMANCE:
-     * 1. React Reconciliation Bypass: Calling these methods directly from the
-     *    practice service (DSP/Scheduler) allows for 60 FPS visual updates
-     *    without triggering React's Virtual DOM diffing. This is critical for
-     *    maintaining a stable frame rate.
-     * 2. Layout Reflow Prevention: OSMD cursor movements are optimized to
-     *    avoid full browser layout recalculations where possible. By using
-     *    an imperative bridge, we prevent React from unintentionally triggering
-     *    unnecessary style/layout updates on the container.
+     *
+     * 1. React Reconciliation Bypass:
+     *    Calling these methods directly from the PracticeService (DSP/Scheduler)
+     *    allows for 60 FPS visual updates without entering React's render loop.
+     *    If the cursor position were a React state, every musical tick would
+     *    trigger a component tree evaluation, which is too expensive for
+     *    real-time synchronization.
+     *
+     * 2. Reflow & Repaint Optimization:
+     *    OSMD's `cursor.next()` performs direct DOM/SVG manipulations. By using
+     *    an imperative API, we ensure that these updates happen in isolation.
+     *    React props-based updates would often trigger unnecessary layout
+     *    recalculations (reflows) for the entire container, leading to frame drops.
+     *
+     * 3. Sample-Accurate Visuals:
+     *    The musical scheduler operates on the AudioContext clock. An imperative
+     *    call from the scheduler to `nextStep()` ensures the visual cursor
+     *    moves at the exact moment the audio event is triggered, bypassing
+     *    the variable latency of the React commit phase.
      */
     useImperativeHandle(ref, () => ({
       async loadScore(musicXml: string) {

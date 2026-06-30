@@ -1,7 +1,7 @@
 import { CircularBuffer } from 'mnemonist'
 
 import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structures';
-import { type NoteTechnique,type Observation, type SessionReport as DomainSessionReport, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
+import { type Observation, type SessionReport as DomainSessionReport, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
 
 /**
  * LocalSessionReport
@@ -211,11 +211,11 @@ export class TechniqueAgent {
     const r = this.sessionReport;
     return {
       bestNote: r.bestNote,
-      bestNoteAccuracy: r.bestNoteCents,
+      bestNoteCents: r.bestNoteCents,
       worstNote: r.worstNote,
-      worstNoteAccuracy: r.worstNoteCents,
-      overallStability: r.averageStability,
-      recommendation: this.getRecommendation()
+      worstNoteCents: r.worstNoteCents,
+      averageStability: r.averageStability,
+      noteCount: r.noteCount,
     };
   }
 

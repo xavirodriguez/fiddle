@@ -4,19 +4,30 @@
  * Bridge to ensure Tone.js and the native Web Audio DSP pipeline share
  * the exact same AudioContext and temporal reference.
  *
- * Design Decisions:
- * 1. Single Source of Truth: All audio operations use the native context
- *    from AudioManager. This ensures that the metronome, accompaniment,
- *    and DSP pipeline (pitch detection) all reference the exact same
- *    hardware clock, eliminating drift over time.
- * 2. Nominal Typing: Branded types for Seconds and BPM to prevent
- *    mathematical errors in scheduling (e.g., adding BPM to Seconds).
- * 3. Idempotency: Tone.setContext and Tone.getTransport().context assignment
- *    are protected to avoid redundant re-initialization which can cause
- *    audible glitches or scheduling resets.
- * 4. Functional Error Handling: Uses `neverthrow` to manage initialization
- *    results, forcing callers to explicitly handle cases where hardware
- *    initialization might fail (e.g., user denied microphone access).
+ * ARCHITECTURAL DESIGN DECISIONS:
+ *
+ * 1. Single Source of Truth (Temporal Sync):
+ *    All audio operations must use the same native AudioContext. By forcing
+ *    Tone.js to share the context from AudioManager, we ensure that the
+ *    musical scheduler (Tone.Transport) and the DSP pipeline (Pitch Detection)
+ *    reference the exact same hardware clock. This eliminates drift between
+ *    accompaniment and analysis.
+ *
+ * 2. Nominal Typing (Unit Safety):
+ *    Uses branded types for `Seconds` and `BPM`. This prevents common
+ *    musical computing errors, such as accidentally adding a tempo value
+ *    to a time value or passing raw numbers where specific units are required.
+ *
+ * 3. Idempotency & Lifecycle:
+ *    `initialize()` is designed to be safe to call multiple times. It
+ *    protects against redundant re-initialization of Tone's internal
+ *    context, which can cause audible glitches or reset the musical timeline.
+ *
+ * 4. Sample-Accurate Precision:
+ *    By setting Tone's context directly and using the transport's scheduling
+ *    capabilities (which use the AudioContext's look-ahead), we guarantee
+ *    events are triggered with hardware-level precision, bypassing the
+ *    main thread's variable jitter.
  */
 
 import { err, ok, type Result } from 'neverthrow'
