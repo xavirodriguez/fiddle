@@ -24,6 +24,9 @@ describe('TimelineSynchronizer', () => {
 
   it('should compile an exercise into a timeline', () => {
     const result = synchronizer.compile(mockExercise)
+    if (result.isErr()) {
+      console.error(result.error)
+    }
     expect(result.isOk()).toBe(true)
     const timeline = synchronizer.getTimeline()
     expect(timeline).toHaveLength(2)

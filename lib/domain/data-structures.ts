@@ -2,7 +2,7 @@
  * Estructuras de Datos del Dominio
  *
  * Define tipos fundamentales para el procesamiento de audio, optimizados
- * para Zero-Allocation y baja latencia.
+ * para Zero-Allocation y baja latencia en el ciclo de vida de la aplicación.
  *
  * @packageDocumentation
  */
@@ -12,22 +12,27 @@ import { CircularBuffer } from 'mnemonist';
 import { type TechniqueMetrics } from '../technique-types';
 import { type Cents, type Hertz } from './musical-domain';
 
-/** Umbral de tolerancia profesional para violín (cents). */
+/**
+ * Umbral de tolerancia profesional para violín (15 cents).
+ * Se considera el estándar para una ejecución afinada en contexto de práctica.
+ */
 export const VIOLIN_TOLERANCE_CENTS = 15 as Cents;
 
 /**
  * PitchFrame: Estructura inmutable para transporte de datos de tono.
+ * Representa un instante puntual de análisis de la señal de audio.
  */
 export interface PitchFrame {
   readonly frequency: Hertz;
   readonly centsDeviation: Cents;
-  readonly confidence: number;
-  readonly timestamp: number;
+  readonly confidence: number; // [0.0, 1.0]
+  readonly timestamp: number;  // Basado en AudioContext.currentTime
   readonly technique?: TechniqueMetrics;
 }
 
 /**
  * MutablePitchFrame: Estructura para reutilización de memoria en el hot path.
+ * Permite actualizar datos 60 veces por segundo sin disparar el Garbage Collector.
  */
 export interface MutablePitchFrame {
   frequency: Hertz;
@@ -59,7 +64,10 @@ export class FixedRingBuffer<T> {
     this.buffer = new CircularBuffer(Array, maxSize);
   }
 
-  /** Inserta un elemento (complejidad O(1)). */
+  /**
+   * Inserta un elemento en el buffer. Si el buffer está lleno,
+   * sobrescribe el elemento más antiguo (O(1)).
+   */
   push(item: T): void {
     this.buffer.push(item);
   }
@@ -75,13 +83,17 @@ export class FixedRingBuffer<T> {
     }
   }
 
-  /** Retorna el último elemento insertado. */
+  /**
+   * Retorna el último elemento insertado sin extraerlo.
+   */
   peek(): T | undefined {
     if (this.buffer.size === 0) return undefined;
     return this.buffer.get(this.buffer.size - 1);
   }
 
-  /** Limpia el buffer lógicamente sin liberar memoria. */
+  /**
+   * Limpia el buffer lógicamente reseteando los punteros.
+   */
   clear(): void {
     this.buffer.clear();
   }
@@ -91,7 +103,8 @@ export class FixedRingBuffer<T> {
   }
 
   /**
-   * toArray: Asigna memoria. SOLO para uso en pruebas o depuración.
+   * Convierte el buffer a un array estándar.
+   * ADVERTENCIA: Esta operación asigna memoria. Usar solo fuera del hot path (ej. reportes).
    * @internal
    */
   toArray(): readonly T[] {
