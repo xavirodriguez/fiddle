@@ -81,7 +81,6 @@ export class PracticeService {
           this.successSnapshot.centsDeviation = SHARED_PITCH_FRAME.centsDeviation
           this.successSnapshot.timestamp = SHARED_PITCH_FRAME.timestamp
           this.successSnapshot.confidence = SHARED_PITCH_FRAME.confidence
-          this.successSnapshot.technique = SHARED_PITCH_FRAME.technique
         },
         notifySuccess: () => {
           const store = useAppStore.getState()
