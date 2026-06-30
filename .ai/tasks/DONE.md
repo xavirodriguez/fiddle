@@ -27,3 +27,4 @@
 | 8.1 | Unificación de Stores y Persistencia Reactiva | ~50 |
 | 8.2 | Sistema de Versionado y Migración de Persistencia | ~30 |
 | 8.3 | Historial de Sesión y Analíticas de Desempeño | ~10 |
+| 8.3 | Estructuras de Analíticas y Adaptador de Exportación | 0 |

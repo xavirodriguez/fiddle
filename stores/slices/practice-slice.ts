@@ -5,6 +5,8 @@ import { type DetectedNote } from '@/lib/domain/practice'
 import type { PracticeEvent, PracticeState } from '@/lib/practice-core'
 import { reducePracticeEvent } from '@/lib/practice-core'
 
+import { type PracticeSessionRecord } from '@/lib/persistence/storage-types'
+
 const EMPTY_EXERCISE = {
   id: '__empty__',
   title: 'Sin ejercicio',
@@ -70,6 +72,7 @@ export interface PracticeSlice {
   internalUpdate: (event: PracticeEvent) => void
   updateSync: (sync: Partial<PracticeSlice['syncState']>) => void
   loadExercise: (exercise: PracticeState['exercise']) => void
+  completeSession: (record: PracticeSessionRecord) => void
   jumpToNote: (index: number) => void
   nextNote: () => void
   prevNote: () => void
@@ -105,6 +108,21 @@ export const createPracticeSlice: StateCreator<PracticeSlice> = (set, get) => ({
         exercise,
       },
     })
+  },
+
+  completeSession(record: PracticeSessionRecord) {
+    set((state) => ({
+      practiceState: {
+        ...state.practiceState,
+        sessionHistory: [...state.practiceState.sessionHistory, {
+          noteIndex: state.practiceState.currentIndex,
+          pitch: record.mostDifficultNote ?? '',
+          avgCents: 0, // Simplified for now
+          isPerfect: record.accuracyPercentage > 95,
+          timestamp: record.timestamp
+        }]
+      }
+    }))
   },
 
   jumpToNote(index: number) {
