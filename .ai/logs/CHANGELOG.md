@@ -44,6 +44,12 @@
 - Fixed memory leaks in the Web Audio graph by properly disconnecting nodes from the shared source.
 - Resolved circular dependencies between `WebAudioAdapter` and `AudioPipeline`.
 - Optimized messaging between Worklet and Main thread using buffer pools and minimal structured cloning.
+- Resolved type conflicts in `TechniqueAgent` regarding `SessionReport` and internal tracking.
+
+### Added
+- **Analytics Domain:** Created `lib/domain/analytics.ts` for long-term progress tracking and session aggregation.
+- **Data Export:** Implemented `lib/persistence/export-adapter.ts` for JSON/CSV data portability.
+- **Session History Persistence:** Integrated automatic session recording into `app-store.ts`.
 
 ### Removed
 - **Legacy DSP:** Complete removal of manual YIN implementation and redundant `pitch-detector.ts` (Phase 3 requirement).

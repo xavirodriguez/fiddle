@@ -26,5 +26,15 @@ export const CalibrationSchema = z.object({
 
 export type Calibration = z.infer<typeof CalibrationSchema>
 
+/**
+ * Schema for global user history.
+ */
+export const SessionHistorySchema = z.object({
+  sessions: z.array(PracticeSessionRecordSchema),
+  lastUpdated: z.number(),
+})
+
+export type SessionHistory = z.infer<typeof SessionHistorySchema>
+
 /** Valor deserializado desde el storage comprimido. Puede ser null si no existe. */
 export type DeserializedStorageValue = Record<string, unknown> | null | undefined
