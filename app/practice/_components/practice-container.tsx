@@ -9,12 +9,15 @@
  */
 
 import dynamic from 'next/dynamic'
-import { useRef } from 'react'
+import { useEffect,useRef, useState } from 'react'
 
+import { loadAsync } from '@/lib/persistence/persistence-core'
+import { type SessionHistory,SessionHistorySchema } from '@/lib/persistence/storage-types'
 import { audioManager } from '@/lib/infrastructure/audio-manager'
 import { practiceService } from '@/lib/practice/practice-service'
 import { useAppStore } from '@/stores/app-store'
 
+import { AnalyticsDashboard } from './analytics-dashboard'
 import { FeedbackOverlay } from './feedback-overlay'
 import { PracticeToolbar } from './practice-toolbar'
 import { type ScoreViewerRef } from './score-viewer'
@@ -46,6 +49,19 @@ export function PracticeContainer() {
   const prevNote = useAppStore((s) => s.prevNote)
   const internalUpdate = useAppStore((s) => s.internalUpdate)
   const scoreRef = useRef<ScoreViewerRef>(null)
+
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [history, setHistory] = useState<SessionHistory | null>(null)
+
+  useEffect(() => {
+    if (showAnalytics || practiceState.status === 'completed') {
+      const loadHistory = async () => {
+        const data = await loadAsync('violin-session-history', SessionHistorySchema)
+        if (data) setHistory(data)
+      }
+      void loadHistory()
+    }
+  }, [showAnalytics, practiceState.status])
 
   const isPlaying = practiceState.status !== 'idle' && practiceState.status !== 'completed'
   const isLoopEnabled = practiceState.loopRegion?.isEnabled ?? false
@@ -98,6 +114,8 @@ export function PracticeContainer() {
         onPrevNote={prevNote}
         onNextNote={nextNote}
         onToggleLoop={handleToggleLoop}
+        onShowAnalytics={() => setShowAnalytics(!showAnalytics)}
+        isShowingAnalytics={showAnalytics}
       />
 
       {/*
@@ -107,6 +125,27 @@ export function PracticeContainer() {
         receives no pitch props — FeedbackOverlay owns all real-time data.
       */}
       <div className="relative flex flex-1 overflow-hidden bg-background">
+        {(showAnalytics || practiceState.status === 'completed') ? (
+          <div className="absolute inset-0 z-50 overflow-auto bg-background/95 backdrop-blur-sm">
+             <div className="mx-auto max-w-4xl pt-8 pb-16">
+               <div className="flex items-center justify-between px-6 mb-4">
+                 <h2 className="text-2xl font-bold">
+                   {practiceState.status === 'completed' ? '¡Sesión Completada!' : 'Analíticas Globales'}
+                 </h2>
+                 {practiceState.status === 'completed' && (
+                    <button
+                      onClick={handleReset}
+                      className="text-sm px-4 py-2 bg-primary text-primary-foreground rounded-md"
+                    >
+                      Nueva Sesión
+                    </button>
+                 )}
+               </div>
+               <AnalyticsDashboard sessions={history?.sessions ?? []} />
+             </div>
+          </div>
+        ) : null}
+
         <ScoreViewer
           ref={scoreRef}
           onReady={handleScoreReady}

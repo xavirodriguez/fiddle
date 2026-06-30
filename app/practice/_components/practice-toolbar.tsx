@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronLeft, ChevronRight, Play, Repeat,RotateCcw, Square } from 'lucide-react'
+import { BarChart3,ChevronLeft, ChevronRight, Play, Repeat,RotateCcw, Square } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,6 +21,10 @@ export interface PracticeToolbarProps {
   readonly onNextNote: () => void
   /** Called when the user toggles loop / drill mode. */
   readonly onToggleLoop: () => void
+  /** Called when the user wants to see analytics. */
+  readonly onShowAnalytics: () => void
+  /** Whether analytics is currently visible. */
+  readonly isShowingAnalytics: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -41,6 +45,8 @@ export function PracticeToolbar({
   onPrevNote,
   onNextNote,
   onToggleLoop,
+  onShowAnalytics,
+  isShowingAnalytics,
 }: PracticeToolbarProps) {
   return (
     <div
@@ -111,6 +117,25 @@ export function PracticeToolbar({
         ].join(' ')}
       >
         <Repeat className="h-4 w-4" aria-hidden="true" />
+      </button>
+
+      <div className="flex-1" aria-hidden="true" />
+
+      {/* Analytics */}
+      <button
+        type="button"
+        onClick={onShowAnalytics}
+        aria-label="Ver analíticas"
+        aria-pressed={isShowingAnalytics}
+        className={[
+          'inline-flex h-9 w-9 items-center justify-center rounded-md border transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          isShowingAnalytics
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'border-border bg-background text-foreground hover:bg-muted',
+        ].join(' ')}
+      >
+        <BarChart3 className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   )

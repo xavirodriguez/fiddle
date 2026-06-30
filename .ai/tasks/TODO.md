@@ -171,6 +171,7 @@
     * [x] Implementar un sistema de versionado de esquemas en `PersistenceCore` para manejar migraciones de datos de usuario.
     * [x] Crear una cola de persistencia asíncrona que priorice la fluidez del juego frente a la escritura en disco.
 
-* [ ] **8.3. Visualización de Progreso y Analíticas (Application/Adapters)**
-    * [ ] Crear estructuras de datos para tendencias a largo plazo (ej. mejora en la afinación de la cuerda Sol durante 30 días).
-    * [ ] Diseñar el adaptador para exportar datos de sesión en formatos estándar (JSON/CSV) para análisis externo.
+* [x] **8.3. Visualización de Progreso y Analíticas (Application/Adapters)**
+    * [x] Crear estructuras de datos para tendencias a largo plazo (ej. mejora en la afinación de la cuerda Sol durante 30 días).
+    * [x] Diseñar el adaptador para exportar datos de sesión en formatos estándar (JSON/CSV) para análisis externo.
+    * [x] Implementar Dashboard de Analíticas en el frontend con visualizaciones de tendencias.

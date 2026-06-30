@@ -19,4 +19,3 @@
 
 ## Pending Work
 - Advanced AI-driven technique recommendations (Phase 7 expansion).
-- Global statistics dashboard (Phase 8 visualization).

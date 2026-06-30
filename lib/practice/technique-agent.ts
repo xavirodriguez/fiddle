@@ -4,11 +4,11 @@ import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structur
 import { type NoteTechnique,type Observation, type SessionReport as DomainSessionReport, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
 
 /**
- * LocalSessionReport
+ * InternalSessionTracker
  *
- * Internal session report with counters for calculation.
+ * Tracks historical data for the current session (internal state).
  */
-interface LocalSessionReport {
+interface InternalSessionTracker {
   bestNote: string | null;
   bestNoteCents: number;
   worstNote: string | null;
@@ -34,7 +34,7 @@ export class TechniqueAgent {
   private readonly centsArray: Float64Array
   private readonly rmsArray: Float64Array
 
-  private sessionReport: LocalSessionReport = {
+  private sessionTracker: InternalSessionTracker = {
     bestNote: null,
     bestNoteCents: Infinity,
     worstNote: null,
@@ -186,8 +186,8 @@ export class TechniqueAgent {
    * Updates session statistics with a newly completed note.
    */
   recordNote(noteName: string, avgCents: number, stability: number): void {
-    const absCents = Math.abs(avgCents)
-    const r = this.sessionReport
+    const absCents = Math.abs(avgCents);
+    const r = this.sessionTracker;
 
     if (absCents < r.bestNoteCents) {
       r.bestNote = noteName
@@ -207,8 +207,8 @@ export class TechniqueAgent {
    * Generates a unique collection of observations for a specific technique snapshot.
    */
 
-  getSessionReport(): DomainSessionReport {
-    const r = this.sessionReport;
+  getSessionReport(): Readonly<SessionReport & { noteCount: number; bestNoteCents: number; worstNoteCents: number }> {
+    const r = this.sessionTracker;
     return {
       bestNote: r.bestNote,
       bestNoteCents: r.bestNoteCents,
@@ -219,8 +219,8 @@ export class TechniqueAgent {
     };
   }
 
-  private getRecommendation(): string {
-    const r = this.sessionReport;
+  getRecommendation(): string {
+    const r = this.sessionTracker;
     if (r.noteCount === 0) return 'Comienza a tocar para recibir recomendaciones.';
 
     if (r.averageStability < 0.7) {
@@ -245,7 +245,7 @@ export class TechniqueAgent {
   }
 
   resetSession(): void {
-    this.sessionReport = {
+    this.sessionTracker = {
       bestNote: null,
       bestNoteCents: Infinity,
       worstNote: null,
