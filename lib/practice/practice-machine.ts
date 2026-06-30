@@ -2,6 +2,7 @@ import { assign, setup } from 'xstate'
 
 import { type PitchFrame } from '../domain/data-structures'
 import { frequencyToMidiRaw } from '../domain/musical-domain';
+import { REQUIRED_HOLD_TIME_SEC } from './practice-constants';
 
 export interface PracticeContext {
   targetMidi: number;
@@ -18,17 +19,6 @@ export type PracticeEvent =
   | { type: 'PITCH_DETECTED'; frame: PitchFrame }
   | { type: 'PITCH_LOST' }
   | { type: 'SET_TARGET'; midi: number };
-
-const _context: PracticeContext = {
-  targetMidi: 0,
-  toleranceCents: 15,
-  requiredHoldTime: 1.0,
-  currentHoldTime: 0,
-  lastTimestamp: 0,
-  errorCount: 0,
-}
-
-const _events: PracticeEvent = { type: 'STOP' }
 
 export const practiceMachine = setup({
   types: {
@@ -72,6 +62,9 @@ export const practiceMachine = setup({
       currentHoldTime: 0,
       lastTimestamp: 0,
     }),
+    captureSnapshot: () => {
+      // Inlined in PracticeService.actor definition
+    },
     notifySuccess: () => {
       // Inlined in PracticeService.actor definition
     },
@@ -82,7 +75,7 @@ export const practiceMachine = setup({
   context: ({ input }) => ({
     targetMidi: 0,
     toleranceCents: 15,
-    requiredHoldTime: 1.0,
+    requiredHoldTime: REQUIRED_HOLD_TIME_SEC,
     currentHoldTime: 0,
     lastTimestamp: 0,
     errorCount: 0,
@@ -147,7 +140,7 @@ export const practiceMachine = setup({
       after: {
         500: 'listening',
       },
-      entry: 'notifySuccess',
+      entry: ['captureSnapshot', 'notifySuccess'],
       on: {
         SET_TARGET: {
           target: 'listening',

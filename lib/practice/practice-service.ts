@@ -12,7 +12,7 @@ import {
   SHARED_PITCH_FRAME,
 } from '../domain/data-structures'
 import { type Exercise, type Note as TargetNote } from '../domain/exercise'
-import { type Cents, frequencyToMidiRaw } from '../domain/musical-domain'
+import { type Cents, frequencyToMidiRaw, type Hertz } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
 import { audioManager } from '../infrastructure/audio-manager'
@@ -38,6 +38,22 @@ export class PracticeService {
   private onNoteTriggered: ((event: MusicalEvent) => void) | null = null
   private pipelineSubscription: Subscription | null = null
 
+  private readonly successSnapshot = {
+    frequency: 0,
+    centsDeviation: 0,
+    timestamp: 0,
+    confidence: 0,
+    technique: undefined as PitchFrame['technique'],
+  }
+
+  private readonly REUSABLE_DETECTED_NOTE: DetectedNote = {
+    pitch: '',
+    pitchHz: 0 as Hertz,
+    cents: 0 as Cents,
+    timestamp: 0,
+    confidence: 0,
+  }
+
   /** Pre-allocated event object for the practice machine */
   private readonly REUSABLE_PITCH_EVENT: Extract<PracticeEvent, { type: 'PITCH_DETECTED' }> = {
     type: 'PITCH_DETECTED',
@@ -47,16 +63,27 @@ export class PracticeService {
   private actor = createActor(
     practiceMachine.provide({
       actions: {
+        captureSnapshot: () => {
+          this.successSnapshot.frequency = SHARED_PITCH_FRAME.frequency
+          this.successSnapshot.centsDeviation = SHARED_PITCH_FRAME.centsDeviation
+          this.successSnapshot.timestamp = SHARED_PITCH_FRAME.timestamp
+          this.successSnapshot.confidence = SHARED_PITCH_FRAME.confidence
+          this.successSnapshot.technique = SHARED_PITCH_FRAME.technique
+        },
         notifySuccess: () => {
           const store = useAppStore.getState()
-          const detected = mapFrameToDetectedNote(SHARED_PITCH_FRAME, this.cachedTargetPitch ?? '')
+          const detected = mapFrameToDetectedNote(
+            this.successSnapshot as MutablePitchFrame,
+            this.cachedTargetPitch ?? '',
+            this.REUSABLE_DETECTED_NOTE,
+          )
 
           // Generate observations for the matched note
           let observations: Observation[] = []
-          if (SHARED_PITCH_FRAME.technique) {
+          if (this.successSnapshot.technique) {
             observations = audioPipeline
               .getTechniqueAgent()
-              .generateObservations(SHARED_PITCH_FRAME.technique, SHARED_PITCH_FRAME.timestamp)
+              .generateObservations(this.successSnapshot.technique, this.successSnapshot.timestamp)
           }
 
           // Record the note in the technique agent for session statistics
@@ -65,7 +92,7 @@ export class PracticeService {
             .recordNote(
               detected.pitch,
               detected.cents,
-              SHARED_PITCH_FRAME.technique?.rmsStability ?? 1,
+              this.successSnapshot.technique?.rmsStability ?? 1,
             )
 
           store.internalUpdate({
@@ -73,7 +100,7 @@ export class PracticeService {
             payload: {
               isPerfect: Math.abs(detected.cents) < 5,
               observations,
-              timestamp: SHARED_PITCH_FRAME.timestamp,
+              timestamp: this.successSnapshot.timestamp,
             },
           })
         },
@@ -85,6 +112,9 @@ export class PracticeService {
   )
 
   async initialize(exercise: Exercise, onNoteTriggered: (event: MusicalEvent) => void) {
+    this.pipelineSubscription?.unsubscribe()
+    this.pipelineSubscription = null
+
     // Ensure the native AudioContext is initialized first
     await audioManager.initialize()
 
@@ -94,7 +124,12 @@ export class PracticeService {
       console.error('[PracticeService] ToneBridge failed:', bridgeResult.error)
     }
 
-    this.synchronizer.compile(exercise)
+    const compileResult = this.synchronizer.compile(exercise)
+    if (compileResult.isErr()) {
+      console.error('[PracticeService] Timeline compilation failed:', compileResult.error)
+      return
+    }
+
     this.onNoteTriggered = onNoteTriggered
 
     // Ensure the reactive pipeline is active (This also starts the hardware stream via singleton adapter)
@@ -124,7 +159,7 @@ export class PracticeService {
 
   stop() {
     this.actor.stop()
-    audioPipeline.destroy().catch((err) => console.error('[AudioPipeline]', err))
+    audioPipeline.stop().catch((err) => console.error('[AudioPipeline]', err))
     toneAudioPlayer.stopAll()
   }
 
@@ -183,7 +218,8 @@ export class PracticeService {
 
     const detectedNote = mapFrameToDetectedNote(
       SHARED_PITCH_FRAME,
-      MusicalNote.fromFrequencyShared(frame.frequency).nameWithOctave,
+      note.nameWithOctave,
+      this.REUSABLE_DETECTED_NOTE,
     )
 
     if (shouldUpdateStore) {
@@ -230,14 +266,17 @@ export class PracticeService {
  * Pure adapter function to map a MutablePitchFrame to a DetectedNote.
  * Ensures zero-allocation when used in the hot path.
  */
-function mapFrameToDetectedNote(frame: MutablePitchFrame, pitchName: string): DetectedNote {
-  return {
-    pitch: pitchName,
-    pitchHz: frame.frequency,
-    cents: frame.centsDeviation,
-    timestamp: frame.timestamp,
-    confidence: frame.confidence,
-  }
+function mapFrameToDetectedNote(
+  frame: MutablePitchFrame,
+  pitchName: string,
+  out: DetectedNote,
+): DetectedNote {
+  out.pitch = pitchName
+  out.pitchHz = frame.frequency
+  out.cents = frame.centsDeviation
+  out.timestamp = frame.timestamp
+  out.confidence = frame.confidence
+  return out
 }
 
 export const practiceService = new PracticeService()

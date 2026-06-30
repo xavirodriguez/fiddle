@@ -211,11 +211,11 @@ export class TechniqueAgent {
     const r = this.sessionReport;
     return {
       bestNote: r.bestNote,
-      bestNoteAccuracy: r.bestNoteCents,
+      bestNoteCents: r.bestNoteCents,
       worstNote: r.worstNote,
-      worstNoteAccuracy: r.worstNoteCents,
-      overallStability: r.averageStability,
-      recommendation: this.getRecommendation()
+      worstNoteCents: r.worstNoteCents,
+      averageStability: r.averageStability,
+      noteCount: r.noteCount,
     };
   }
 

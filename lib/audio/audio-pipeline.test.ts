@@ -28,12 +28,12 @@ describe('AudioPipeline', () => {
     expect(frame.frequency).toBe(440)
   })
 
-  it('should cleanup segmenter actor on destroy()', async () => {
+  it('should cleanup segmenter actor on stop()', async () => {
     const pipeline = new AudioPipeline()
     // Accessing private for test verification
     const stopSpy = vi.spyOn((pipeline as unknown as { segmenter: { stop: () => void } }).segmenter, 'stop')
 
-    await pipeline.destroy()
+    await pipeline.stop()
     expect(stopSpy).toHaveBeenCalled()
   })
 })

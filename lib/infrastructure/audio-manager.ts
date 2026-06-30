@@ -39,8 +39,14 @@ class AudioManager {
         video: false
       })
       this.sourceNode = this.context.createMediaStreamSource(this.stream)
-      // Bug 6: Connect to analyser to allow raw signal extraction
-      this.sourceNode.connect(this.analyser)
+
+      this.filter = this.context.createBiquadFilter()
+      this.filter.type = 'bandpass'
+      this.filter.frequency.value = 440
+
+      // Bug 6: Connect to analyser via filter to allow filtered signal extraction
+      this.sourceNode.connect(this.filter)
+      this.filter.connect(this.analyser)
     } catch (err) {
       console.error('[AudioManager] Failed to acquire microphone:', err)
       throw err
@@ -109,6 +115,7 @@ class AudioManager {
     this.compressor?.disconnect()
     this.filter?.disconnect()
     await this.context?.close()
+    this.analyser = null
     this.stream = null
     this.sourceNode = null
     this.compressor = null

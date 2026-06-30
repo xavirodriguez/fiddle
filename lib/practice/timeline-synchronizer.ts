@@ -170,8 +170,10 @@ export class TimelineSynchronizer {
     }
 
     const currentEvent = this.timeline[this.currentEventPointer]
+    const lastEvent = this.timeline[this.timeline.length - 1]
+    const isExerciseOver = lastEvent && currentTime > lastEvent.startTime + lastEvent.duration
 
-    if (!currentEvent) {
+    if (!currentEvent || isExerciseOver) {
       SHARED_VERIFICATION_RESULT.isCorrectPitch = false
       SHARED_VERIFICATION_RESULT.isCorrectTiming = false
       SHARED_VERIFICATION_RESULT.timingError = 0 as Seconds
