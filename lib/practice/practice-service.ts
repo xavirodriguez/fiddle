@@ -82,12 +82,11 @@ export class PracticeService {
           this.successSnapshot.centsDeviation = SHARED_PITCH_FRAME.centsDeviation
           this.successSnapshot.timestamp = SHARED_PITCH_FRAME.timestamp
           this.successSnapshot.confidence = SHARED_PITCH_FRAME.confidence
-          this.successSnapshot.technique = SHARED_PITCH_FRAME.technique
         },
         notifySuccess: () => {
           const store = useAppStore.getState()
           const detected = mapFrameToDetectedNote(
-            this.successSnapshot as unknown as MutablePitchFrame,
+            this.successSnapshot as MutablePitchFrame,
             this.cachedTargetPitch ?? '',
             this.REUSABLE_DETECTED_NOTE,
           )
@@ -213,28 +212,21 @@ export class PracticeService {
     const store = useAppStore.getState()
     const practiceState = store.practiceState
 
-    const note = MusicalNote.fromFrequencyShared(frame.frequency)
-    const nameWithOctave = note.nameWithOctave
-
-    SHARED_PITCH_FRAME.frequency = frame.frequency
-    SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
-    SHARED_PITCH_FRAME.timestamp = now
-    SHARED_PITCH_FRAME.confidence = frame.confidence
-
     this.updateTargetCache(practiceState)
 
-    const detectedNote = mapFrameToDetectedNote(
-      SHARED_PITCH_FRAME,
-      nameWithOctave,
-      this.REUSABLE_DETECTED_NOTE,
-    )
-
     if (shouldUpdateStore) {
+      const note = MusicalNote.fromFrequencyShared(frame.frequency)
+      const detectedNote = mapFrameToDetectedNote(
+        frame,
+        note.nameWithOctave,
+        this.REUSABLE_DETECTED_NOTE,
+      )
       store.internalUpdate({ type: 'NOTE_DETECTED', payload: detectedNote })
       this.lastUpdateTime = frame.timestamp
     }
 
     // Use pre-allocated event object
+    // Note: this.REUSABLE_PITCH_EVENT already points to SHARED_PITCH_FRAME which is updated in pipeline
     this.actor.send(this.REUSABLE_PITCH_EVENT)
   }
 

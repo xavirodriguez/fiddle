@@ -53,9 +53,10 @@ export class AudioPipeline {
     this.segmenter.start()
 
     // Internal pipeline setup
+    // Flow: RawPitchEvent \> NoteSegmenter \> Agent \> EventSink
     this.pitchFrame$ = this.inputSubject.asObservable().pipe(
-      // 1. Note Segmentation Stage
-      tap((event) => this.processSegmentation(event)),
+      // 1. Note Segmentation Stage (XState bridge)
+      tap((event) => this.segmentNote(event)),
 
       // 2. Filter Stage: Only proceed when in NOTE or NOTE_LOST states
       filter(() => {
@@ -64,9 +65,9 @@ export class AudioPipeline {
       }),
 
       // 3. Agent Stage: Technique Analysis & Frame Mapping (Zero Allocation)
-      map((event) => this.processAnalysis(event)),
+      map((event) => this.analyzeFrame(event)),
 
-      // 4. Multicast Stage: Share the stream across multiple subscribers
+      // 4. EventSink Stage: Multicast the stream across multiple subscribers
       share(),
     )
 
@@ -83,7 +84,7 @@ export class AudioPipeline {
   /**
    * Internal logic for note segmentation based on raw signal strength.
    */
-  private processSegmentation(event: RawPitchEvent): void {
+  private segmentNote(event: RawPitchEvent): void {
     const isStrong = event.pitchHz > 0 && event.confidence > 0.8 && event.rms > 0.01
     if (isStrong) {
       const e = this.PITCH_DETECTED_EVENT
@@ -99,7 +100,7 @@ export class AudioPipeline {
    * Internal logic for technique analysis and mapping to PitchFrame.
    * Reuses SHARED_PITCH_FRAME to satisfy the Zero-Allocation mandate.
    */
-  private processAnalysis(event: RawPitchEvent): PitchFrame {
+  private analyzeFrame(event: RawPitchEvent): PitchFrame {
     const note = MusicalNote.fromFrequencyShared(event.pitchHz)
 
     SHARED_PITCH_FRAME.frequency = event.pitchHz as Hertz

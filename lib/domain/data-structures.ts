@@ -2,30 +2,37 @@
  * Estructuras de Datos del Dominio
  *
  * Define tipos fundamentales para el procesamiento de audio, optimizados
- * para Zero-Allocation y baja latencia.
+ * para Zero-Allocation y baja latencia en el ciclo de vida de la aplicación.
  *
  * @packageDocumentation
  */
 
+import { CircularBuffer } from 'mnemonist';
+
 import { type TechniqueMetrics } from '../technique-types';
 import { type Cents, type Hertz } from './musical-domain';
 
-/** Umbral de tolerancia profesional para violín (cents). */
+/**
+ * Umbral de tolerancia profesional para violín (15 cents).
+ * Se considera el estándar para una ejecución afinada en contexto de práctica.
+ */
 export const VIOLIN_TOLERANCE_CENTS = 15 as Cents;
 
 /**
  * PitchFrame: Estructura inmutable para transporte de datos de tono.
+ * Representa un instante puntual de análisis de la señal de audio.
  */
 export interface PitchFrame {
   readonly frequency: Hertz;
   readonly centsDeviation: Cents;
-  readonly confidence: number;
-  readonly timestamp: number;
+  readonly confidence: number; // [0.0, 1.0]
+  readonly timestamp: number;  // Basado en AudioContext.currentTime
   readonly technique?: TechniqueMetrics;
 }
 
 /**
  * MutablePitchFrame: Estructura para reutilización de memoria en el hot path.
+ * Permite actualizar datos 60 veces por segundo sin disparar el Garbage Collector.
  */
 export interface MutablePitchFrame {
   frequency: Hertz;
@@ -48,62 +55,67 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
 
 /**
  * FixedRingBuffer: Buffer circular de tamaño fijo.
- * Utiliza un array pre-asignado para evitar GC.
+ * Utiliza mnemonist.CircularBuffer para garantizar Zero-Allocation.
  */
 export class FixedRingBuffer<T> {
-  private readonly buffer: Array<T | undefined>;
-  private head = 0;
-  private size = 0;
+  private readonly buffer: CircularBuffer<T>;
 
   constructor(public readonly maxSize: number) {
-    this.buffer = new Array<T | undefined>(maxSize).fill(undefined);
+    this.buffer = new CircularBuffer(Array, maxSize);
   }
 
-  /** Inserta un elemento (complejidad O(1)). */
+  /**
+   * Inserta un elemento en el buffer. Si el buffer está lleno,
+   * sobrescribe el elemento más antiguo (O(1)).
+   */
   push(item: T): void {
-    this.buffer[this.head] = item;
-    this.head = (this.head + 1) % this.maxSize;
-    if (this.size < this.maxSize) {
-      this.size++;
-    }
+    this.buffer.push(item);
   }
 
-  /** Itera sobre los elementos sin crear nuevos arrays. */
+  /** Itera sobre los elementos de más reciente a más antiguo sin crear nuevos arrays. */
   forEach(callback: (item: T, index: number) => void): void {
-    for (let i = 0; i < this.size; i++) {
-      const index = (this.head - 1 - i + this.maxSize) % this.maxSize;
-      const item = this.buffer[index];
+    const size = this.buffer.size;
+    for (let i = 0; i < size; i++) {
+      const item = this.buffer.get(size - 1 - i);
       if (item !== undefined) {
         callback(item, i);
       }
     }
   }
 
-  /** Retorna el último elemento insertado. */
+  /**
+   * Retorna el último elemento insertado sin extraerlo.
+   */
   peek(): T | undefined {
-    if (this.size === 0) return undefined;
-    return this.buffer[(this.head - 1 + this.maxSize) % this.maxSize];
-  }
-
-  /** Limpia el buffer lógicamente sin liberar memoria. */
-  clear(): void {
-    this.head = 0;
-    this.size = 0;
-  }
-
-  get length(): number {
-    return this.size;
+    if (this.buffer.size === 0) return undefined;
+    return this.buffer.get(this.buffer.size - 1);
   }
 
   /**
-   * toArray: Asigna memoria. SOLO para uso en pruebas o depuración.
+   * Limpia el buffer lógicamente reseteando los punteros.
+   */
+  clear(): void {
+    this.buffer.clear();
+  }
+
+  get length(): number {
+    return this.buffer.size;
+  }
+
+  /**
+   * Convierte el buffer a un array estándar.
+   * ADVERTENCIA: Esta operación asigna memoria. Usar solo fuera del hot path (ej. reportes).
    * @internal
    */
   toArray(): readonly T[] {
-    const result = new Array<T>(this.size);
-    this.forEach((item, i) => {
-      result[i] = item;
-    });
+    const size = this.buffer.size;
+    const result = new Array<T>(size);
+    for (let i = 0; i < size; i++) {
+      const item = this.buffer.get(size - 1 - i);
+      if (item !== undefined) {
+        result[i] = item;
+      }
+    }
     return result;
   }
 }
