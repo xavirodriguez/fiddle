@@ -68,9 +68,9 @@ export const createTunerSlice: StateCreator<TunerSlice> = (set, get) => {
       set({ active: false })
     },
 
-    updatePitch(frequencyHz: number, confidence: number) {
-      let cents = 0 as Cents
-      if (frequencyHz > 0) {
+    updatePitch(frequencyHz: number, confidence: number, centsDeviation?: number) {
+      let cents = (centsDeviation ?? 0) as Cents
+      if (centsDeviation === undefined && frequencyHz > 0) {
         const midi = frequencyToMidiRaw(frequencyHz as Hertz)
         const rounded = Math.round(midi)
         cents = ((midi - rounded) * 100) as Cents
