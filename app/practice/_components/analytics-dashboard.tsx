@@ -22,7 +22,7 @@ interface AnalyticsDashboardProps {
   readonly sessions: PracticeSession[]
 }
 
-export function AnalyticsDashboard({ sessions }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ sessions }: Readonly<AnalyticsDashboardProps>) {
   const report = useMemo(() => aggregateSessions(sessions), [sessions])
 
   if (sessions.length === 0) {
@@ -142,7 +142,7 @@ export function AnalyticsDashboard({ sessions }: AnalyticsDashboardProps) {
   )
 }
 
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
+function StatCard({ icon, label, value }: Readonly<{ icon: React.ReactNode; label: string; value: string | number }>) {
   return (
     <div className="p-4 border rounded-lg bg-card">
       <div className="flex items-center gap-2 mb-2">

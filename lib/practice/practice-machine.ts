@@ -22,13 +22,12 @@ export type PracticeEvent =
 
 export const practiceMachine = setup({
   types: {
-    context: ({} as unknown as PracticeContext),
-    events: ({} as unknown as PracticeEvent),
-    input: ({} as unknown as {
-      targetMidi?: number;
-      toleranceCents?: number;
-      requiredHoldTime?: number;
-    }),
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    context: {} as PracticeContext,
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    events: {} as PracticeEvent,
+
+    input: {},
   },
   guards: {
     isCorrectPitch: ({ context, event }) => {
