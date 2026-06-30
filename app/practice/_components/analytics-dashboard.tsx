@@ -1,19 +1,19 @@
 "use client"
 
+import { BarChart3, Clock, Download,Target, TrendingUp } from 'lucide-react'
 import { useMemo } from 'react'
 import {
-  LineChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell,
 } from 'recharts'
-import { BarChart3, TrendingUp, Clock, Target, Download } from 'lucide-react'
 
 import { aggregateSessions, type PracticeSession } from '@/lib/domain/analytics'
 import { dataExportAdapter } from '@/lib/persistence/export-adapter'
@@ -73,13 +73,13 @@ export function AnalyticsDashboard({ sessions }: AnalyticsDashboardProps) {
         />
         <div className="flex flex-col justify-center gap-2 p-4 border rounded-lg bg-card">
           <button
-            onClick={() => dataExportAdapter.exportToJson(sessions as any)}
+            onClick={() => dataExportAdapter.exportToJson(sessions)}
             className="flex items-center gap-2 text-xs hover:underline text-muted-foreground"
           >
             <Download className="w-3 h-3" /> Exportar JSON
           </button>
           <button
-            onClick={() => dataExportAdapter.exportToCsv(sessions as any)}
+            onClick={() => dataExportAdapter.exportToCsv(sessions)}
             className="flex items-center gap-2 text-xs hover:underline text-muted-foreground"
           >
             <Download className="w-3 h-3" /> Exportar CSV

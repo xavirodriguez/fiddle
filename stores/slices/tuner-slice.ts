@@ -2,7 +2,7 @@ import type { Subscription } from 'rxjs'
 import { type StateCreator } from 'zustand'
 
 import type { PitchFrame } from '@/lib/domain/data-structures'
-import { type Cents, type Hertz, frequencyToMidiRaw } from '@/lib/domain/musical-domain'
+import { type Cents, frequencyToMidiRaw,type Hertz } from '@/lib/domain/musical-domain'
 
 export interface TunerSlice {
   frequency: Hertz

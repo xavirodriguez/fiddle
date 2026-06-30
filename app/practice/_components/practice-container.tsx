@@ -11,9 +11,9 @@
 import dynamic from 'next/dynamic'
 import { useEffect,useRef, useState } from 'react'
 
+import { audioManager } from '@/lib/infrastructure/audio-manager'
 import { loadAsync } from '@/lib/persistence/persistence-core'
 import { type SessionHistory,SessionHistorySchema } from '@/lib/persistence/storage-types'
-import { audioManager } from '@/lib/infrastructure/audio-manager'
 import { practiceService } from '@/lib/practice/practice-service'
 import { useAppStore } from '@/stores/app-store'
 

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 import { audioPipeline } from '@/lib/audio/audio-pipeline'
 import { loadAsync, saveAsync } from '@/lib/persistence/persistence-core'
-import { type PracticeSessionRecord, SessionHistory,SessionHistorySchema } from '@/lib/persistence/storage-types'
+import { type PracticeSessionRecord, type SessionHistory,SessionHistorySchema } from '@/lib/persistence/storage-types'
 
 import { createPracticeSlice, type PracticeSlice } from './slices/practice-slice'
 import { createTunerSlice, type TunerSlice } from './slices/tuner-slice'
