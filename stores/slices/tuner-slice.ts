@@ -2,7 +2,7 @@ import type { Subscription } from 'rxjs'
 import { type StateCreator } from 'zustand'
 
 import type { PitchFrame } from '@/lib/domain/data-structures'
-import { type Cents, type Hertz, frequencyToMidiRaw } from '@/lib/domain/musical-domain'
+import { type Cents, frequencyToMidiRaw,type Hertz } from '@/lib/domain/musical-domain'
 
 export interface TunerSlice {
   frequency: Hertz
@@ -13,7 +13,7 @@ export interface TunerSlice {
   error: string | null
   start: () => void
   stop: () => void
-  updatePitch: (frequencyHz: number, confidence: number) => void
+  updatePitch: (frequencyHz: number, confidence: number, centsDeviation?: number) => void
 }
 
 const _frame = {
@@ -71,7 +71,7 @@ export const createTunerSlice: StateCreator<TunerSlice> = (set, get) => {
     updatePitch(frequencyHz: number, confidence: number, centsDeviation?: number) {
       let cents = (centsDeviation ?? 0) as Cents
       if (centsDeviation === undefined && frequencyHz > 0) {
-        const midi = frequencyToMidiRaw(frequencyHz as Hertz)
+        const midi = frequencyToMidiRaw(frequencyHz)
         const rounded = Math.round(midi)
         cents = ((midi - rounded) * 100) as Cents
       }

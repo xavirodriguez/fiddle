@@ -2,11 +2,10 @@ import { type StateCreator } from 'zustand'
 
 import { type Note as TargetNote } from '@/lib/domain/exercise'
 import { type DetectedNote } from '@/lib/domain/practice'
+import { type PracticeSessionRecord } from '@/lib/persistence/storage-types'
 import { REQUIRED_HOLD_TIME_SEC } from '@/lib/practice/practice-constants'
 import type { PracticeEvent, PracticeState } from '@/lib/practice-core'
 import { reducePracticeEvent } from '@/lib/practice-core'
-
-import { type PracticeSessionRecord } from '@/lib/persistence/storage-types'
 
 const EMPTY_EXERCISE = {
   id: '__empty__',

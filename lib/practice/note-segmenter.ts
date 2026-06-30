@@ -24,17 +24,13 @@ export type NoteSegmenterEvent =
  * Robustly distinguishes between silence and musical notes using XState v5.
  * Designed for low-latency practice sessions.
  */
-const _context: NoteSegmenterContext = {
-  consecutiveFrames: 0,
-  minFramesForNote: 2,
-}
-
-const _events: NoteSegmenterEvent = { type: 'PITCH_LOST' }
 
 export const noteSegmenterMachine = setup({
   types: {
-    context: ({} as unknown as NoteSegmenterContext),
-    events: ({} as unknown as NoteSegmenterEvent),
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    context: {} as NoteSegmenterContext,
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    events: {} as NoteSegmenterEvent,
   },
   actions: {
     resetCounter: assign({

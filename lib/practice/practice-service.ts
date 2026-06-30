@@ -12,12 +12,12 @@ import {
   SHARED_PITCH_FRAME,
 } from '../domain/data-structures'
 import { type Exercise, type Note as TargetNote } from '../domain/exercise'
-import { type Cents, frequencyToMidiRaw, type Hertz } from '../domain/musical-domain'
+import { type Cents, frequencyToMidiRaw } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
 import { audioManager } from '../infrastructure/audio-manager'
 import { formatPitchName, MusicalNote } from '../practice-core'
-import { type Observation } from '../technique-types'
+import { type TechniqueMetrics } from '../technique-types'
 import { type PracticeEvent, practiceMachine } from './practice-machine'
 import { type MusicalEvent, TimelineSynchronizer } from './timeline-synchronizer'
 
@@ -57,12 +57,13 @@ export class PracticeService {
     centsDeviation: 0,
     timestamp: 0,
     confidence: 0,
+    technique: undefined as TechniqueMetrics | undefined,
   }
 
   private readonly REUSABLE_DETECTED_NOTE: DetectedNote = {
     pitch: '',
-    pitchHz: 0 as Hertz,
-    cents: 0 as Cents,
+    pitchHz: 0,
+    cents: 0,
     timestamp: 0,
     confidence: 0,
   }
