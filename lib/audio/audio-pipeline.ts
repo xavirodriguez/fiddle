@@ -75,13 +75,10 @@ export class AudioPipeline {
      * This prevents flickering in the feedback engine by requiring
      * a short period of stability.
      */
-    this.stablePitchFrame$ = this.pitchFrame$.pipe(
-      debounceTime(50),
-      share()
-    );
+    this.stablePitchFrame$ = this.pitchFrame$.pipe(debounceTime(50), share())
   }
 
-  public readonly stablePitchFrame$: Observable<PitchFrame>;
+  public readonly stablePitchFrame$: Observable<PitchFrame>
 
   /**
    * Internal logic for note segmentation based on raw signal strength.

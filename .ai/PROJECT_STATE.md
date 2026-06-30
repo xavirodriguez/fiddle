@@ -6,8 +6,9 @@
 - **Phase 8 Completed**: Global state unified with versioned persistence, migration support, and session history tracking.
 
 ## Working Features
-- Reactive Audio Pipeline (RxJS + XState).
-- Pitch Detection with `pitchy` and `meyda`.
+- Reactive Audio Pipeline (RxJS + XState) with Zero-Allocation.
+- High-Performance AudioWorklet with Transferable Object messaging.
+- Pitch Detection with `pitchy` (MPM) and `meyda` (Spectral features).
 - Unified Zustand store with versioned persistence middleware.
 - TechniqueAgent with stability, trend, vibrato (rate/depth), and timbre heuristics.
 - Automatic observation generation for matched notes.

@@ -124,7 +124,7 @@ export interface PracticeState {
    * Managed as a fixed-size array with pointers for Zero-Allocation.
    */
   detectionHistory: {
-    items: (DetectedNote | null)[]
+    items: Array<DetectedNote | null>
     head: number
     size: number
     maxSize: number

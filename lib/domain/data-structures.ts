@@ -1,34 +1,31 @@
 /**
  * Estructuras de Datos del Dominio
  *
- * Define los tipos fundamentales para el flujo de análisis de audio,
- * optimizados para rendimiento y consistencia temporal.
+ * Define tipos fundamentales para el procesamiento de audio, optimizados
+ * para Zero-Allocation y baja latencia.
+ *
+ * @packageDocumentation
  */
 
 import { type TechniqueMetrics } from '../technique-types';
 import { type Cents, type Hertz } from './musical-domain';
 
-/**
- * Umbral de tolerancia continua para violín (Intonación profesional).
- * Se define típicamente en +/- 15 cents.
- */
+/** Umbral de tolerancia profesional para violín (cents). */
 export const VIOLIN_TOLERANCE_CENTS = 15 as Cents;
 
 /**
- * Representa un frame discreto de análisis de tono en un punto temporal.
- * Esta estructura es inmutable para la lógica del dominio.
+ * PitchFrame: Estructura inmutable para transporte de datos de tono.
  */
 export interface PitchFrame {
   readonly frequency: Hertz;
   readonly centsDeviation: Cents;
   readonly confidence: number;
-  readonly timestamp: number; // Vinculado a AudioContext.currentTime
+  readonly timestamp: number;
   readonly technique?: TechniqueMetrics;
 }
 
 /**
- * Versión mutable de PitchFrame para bucles DSP críticos.
- * Se utiliza con SHARED_PITCH_FRAME para evitar asignaciones de objetos (Zero-Allocation).
+ * MutablePitchFrame: Estructura para reutilización de memoria en el hot path.
  */
 export interface MutablePitchFrame {
   frequency: Hertz;
@@ -39,7 +36,7 @@ export interface MutablePitchFrame {
 }
 
 /**
- * Objeto compartido pre-asignado para ser reutilizado en frames de análisis.
+ * Singleton compartido para evitar asignaciones en cada frame de audio (60 FPS).
  * @internal
  */
 export const SHARED_PITCH_FRAME: MutablePitchFrame = {
@@ -50,7 +47,8 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
 };
 
 /**
- * Buffer Circular de tamaño fijo optimizado para rendimiento.
+ * FixedRingBuffer: Buffer circular de tamaño fijo.
+ * Utiliza un array pre-asignado para evitar GC.
  */
 export class FixedRingBuffer<T> {
   private readonly buffer: Array<T | undefined>;
@@ -61,6 +59,7 @@ export class FixedRingBuffer<T> {
     this.buffer = new Array<T | undefined>(maxSize).fill(undefined);
   }
 
+  /** Inserta un elemento (complejidad O(1)). */
   push(item: T): void {
     this.buffer[this.head] = item;
     this.head = (this.head + 1) % this.maxSize;
@@ -69,9 +68,8 @@ export class FixedRingBuffer<T> {
     }
   }
 
+  /** Itera sobre los elementos sin crear nuevos arrays. */
   forEach(callback: (item: T, index: number) => void): void {
-    if (this.size === 0) return;
-
     for (let i = 0; i < this.size; i++) {
       const index = (this.head - 1 - i + this.maxSize) % this.maxSize;
       const item = this.buffer[index];
@@ -81,12 +79,13 @@ export class FixedRingBuffer<T> {
     }
   }
 
+  /** Retorna el último elemento insertado. */
   peek(): T | undefined {
     if (this.size === 0) return undefined;
-    const index = (this.head - 1 + this.maxSize) % this.maxSize;
-    return this.buffer[index];
+    return this.buffer[(this.head - 1 + this.maxSize) % this.maxSize];
   }
 
+  /** Limpia el buffer lógicamente sin liberar memoria. */
   clear(): void {
     this.head = 0;
     this.size = 0;
@@ -97,11 +96,11 @@ export class FixedRingBuffer<T> {
   }
 
   /**
-   * SOLO PARA PRUEBAS O RUTAS NO CRÍTICAS PARA EL RENDIMIENTO.
-   * Asigna un nuevo array.
+   * toArray: Asigna memoria. SOLO para uso en pruebas o depuración.
+   * @internal
    */
   toArray(): readonly T[] {
-    const result: T[] = new Array<T>(this.size);
+    const result = new Array<T>(this.size);
     this.forEach((item, i) => {
       result[i] = item;
     });
