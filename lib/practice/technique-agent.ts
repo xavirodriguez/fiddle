@@ -1,7 +1,7 @@
 import { CircularBuffer } from 'mnemonist'
 
 import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structures';
-import { type NoteTechnique,type Observation, type SessionReport as DomainSessionReport, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
+import { type Observation, type SessionReport as DomainSessionReport, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
 
 /**
  * InternalSessionTracker

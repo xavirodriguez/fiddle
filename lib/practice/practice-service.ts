@@ -24,8 +24,22 @@ import { type MusicalEvent, TimelineSynchronizer } from './timeline-synchronizer
 /**
  * PracticeService
  *
- * Orchestrates the real-time audio pipeline and practice session logic.
- * Uses RxJS for reactive audio events and XState for session state.
+ * The central orchestrator of the musical practice engine.
+ *
+ * RESPONSIBILITIES:
+ * 1. Lifecyle Management: Initializes and tears down the AudioPipeline,
+ *    ToneBridge, and Musical Scheduler.
+ * 2. Event Routing: Connects real-time pitch frames from the RxJS pipeline
+ *    to the XState practice machine and the visual ScoreViewer.
+ * 3. Synchronization: Uses the TimelineSynchronizer to verify performer
+ *    accuracy against the absolute hardware clock.
+ * 4. State Projection: Updates the Zustand store with discrete musical
+ *    milestones while keeping high-frequency data out of the React lifecycle.
+ *
+ * ARCHITECTURAL CONTEXT:
+ * - This service acts as the "Controller" in the orchestration flow.
+ * - It ensures that the single AudioContext is shared across all consumers.
+ * - It maintains 60 FPS by throttling store updates and using O(1) verification.
  */
 export class PracticeService {
   private lastUpdateTime = 0

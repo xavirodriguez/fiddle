@@ -47,15 +47,23 @@ const INITIAL_PRACTICE_STATE: PracticeState = {
  *
  * Defines the state and actions for the practice session.
  *
- * DATA ARCHITECTURE:
- * 1. Observable State (Zustand): Contains high-level session status,
- *    discrete musical progress (measure index, target MIDI), and
- *    persistent configuration. This data is observed by React to
- *    drive UI updates.
- * 2. High-Frequency Data (DSP/Refs): Real-time frequency, cents, and
- *    RMS data never enter the Zustand store at 60 FPS. They are
- *    handled via refs and direct DOM manipulation (see FeedbackOverlay)
- *    to prevent React reconciliation pressure.
+ * ARCHITECTURAL DESIGN:
+ *
+ * 1. Discrete Observable State (Zustand):
+ *    Only high-level session status (idle, listening, correct, etc.), discrete
+ *    musical progress (current measure, target MIDI), and static exercise data
+ *    are stored here. This ensures that React re-renders only occur when
+ *    meaningful musical events happen (e.g., moving to a new note).
+ *
+ * 2. High-Frequency Exclusion:
+ *    To maintain 60 FPS and avoid UI jitter, high-frequency audio data
+ *    (real-time frequency, cents, RMS) MUST NEVER be stored in the practice
+ *    slice. That data is handled via direct DOM manipulation and imperative
+ *    ref-based updates in the `FeedbackOverlay` and `ScoreViewer`.
+ *
+ * 3. Immutable Updates (Immer):
+ *    All state transitions use Immer via `set((state) => ...)` to ensure
+ *    structural sharing and efficient change detection for React.
  */
 export interface PracticeSlice {
   practiceState: PracticeState

@@ -69,7 +69,7 @@ describe('Musical Domain Nominal Types', () => {
     })
 
     it('should convert 440Hz to MIDI 69 using frequencyToMidiRaw (zero-allocation)', () => {
-      const result = frequencyToMidiRaw(440 as Hertz)
+      const result = frequencyToMidiRaw(440)
       expect(result).toBe(69)
     })
 

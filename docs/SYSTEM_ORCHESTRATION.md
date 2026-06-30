@@ -118,7 +118,17 @@ AudioContext (Hardware Clock)
 
 ## Decisiones de Diseño Clave
 
-1. **API Imperativa en ScoreViewer**: React no debe saber que el cursor se mueve. El scheduler llama directamente a `scoreRef.current.nextStep()` para evitar el overhead de reconciliación de React a 60 FPS.
-2. **Pre-compilación del Timeline**: Al cargar el MusicXML, se calculan todos los tiempos absolutos en segundos. Esto evita errores acumulativos de redondeo que ocurrirían si se sumaran duraciones en cada paso.
-3. **Zero-Allocation en Verificación**: `TimelineSynchronizer.verify` reutiliza un objeto `SHARED_VERIFICATION_RESULT`. En un bucle de audio, crear un nuevo objeto `{ isCorrect: true, ... }` 60 veces por segundo generaría presión innecesaria en el Garbage Collector.
-4. **Filtro Biquad Adaptativo**: El `WebAudioAdapter` actualiza la frecuencia central de su filtro pasa-banda según la nota que el usuario debe tocar. Esto mejora drásticamente la relación señal/ruido para la detección de pitch.
+1. **API Imperativa en ScoreViewer**:
+   React no debe controlar el movimiento del cursor. El scheduler musical llama directamente a `scoreRef.current.nextStep()`. Esto evita el overhead de la reconciliación de React (Virtual DOM diffing) a 60 FPS y previene reflows innecesarios en el contenedor SVG/Canvas de OSMD.
+
+2. **Pre-compilación del Timeline (Drift Mitigation)**:
+   Al cargar el MusicXML, se calculan todos los tiempos absolutos en segundos basándose en la posición acumulada de beats. Esto garantiza precisión *sample-accurate* y evita errores acumulativos de redondeo que ocurrirían si se sumaran duraciones relativas en cada paso.
+
+3. **Zero-Allocation en el Hot Path**:
+   `TimelineSynchronizer.verify` y el `AudioPipeline` reutilizan objetos compartidos (ej. `SHARED_VERIFICATION_RESULT`, `SHARED_PITCH_FRAME`). En un bucle de audio de 60-100Hz, crear nuevos objetos generaría presión excesiva en el Garbage Collector, provocando micro-cortes (jitter) en el procesamiento de audio.
+
+4. **Filtro Biquad Adaptativo**:
+   El `WebAudioAdapter` actualiza dinámicamente la frecuencia central de su filtro pasa-banda según la nota objetivo actual. Esto mejora drásticamente la relación señal/ruido, permitiendo una detección de pitch más robusta incluso en entornos con ruido ambiente.
+
+5. **Estado Observable vs. Alta Frecuencia**:
+   El store de Zustand solo almacena hitos musicales discretos (cambio de compás, cambio de nota objetivo). Los datos de alta frecuencia (centésimas, hercios) se consumen de forma imperativa o mediante suscripciones directas en capas de UI especializadas (`FeedbackOverlay`) para mantener el rendimiento del hilo principal.
