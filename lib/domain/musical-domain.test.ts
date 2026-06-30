@@ -1,4 +1,4 @@
-import { describe, expect,it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { AppError } from '../errors/app-error'
 import {
@@ -27,7 +27,7 @@ describe('Musical Domain Nominal Types', () => {
       expect(result.isErr()).toBe(true)
       if (result.isErr()) {
         expect(result.error).toBeInstanceOf(AppError)
-        expect(result.error.message).toMatch(/Valor de Hertz inválido/)
+        expect(result.error.message).toMatch(/Frecuencia inválida/)
       }
     })
 
@@ -46,16 +46,20 @@ describe('Musical Domain Nominal Types', () => {
       }
     })
 
+    it('should return error for non-finite cents', () => {
+      const result = makeCents(Infinity)
+      expect(result.isErr()).toBe(true)
+      if (result.isErr()) {
+        expect(result.error.message).toMatch(/Cents inválidos/)
+      }
+    })
+
     it('should allow negative cents (desafinado grave)', () => {
       const result = makeCents(-10.5)
       expect(result.isOk()).toBe(true)
       if (result.isOk()) {
         expect(result.value).toBe(-10.5)
       }
-    })
-
-    it('should return error for non-finite cents', () => {
-      expect(makeCents(Infinity).isErr()).toBe(true)
     })
   })
 
@@ -74,7 +78,11 @@ describe('Musical Domain Nominal Types', () => {
     })
 
     it('should return error for values out of range', () => {
-      expect(makeMidiNote(-1).isErr()).toBe(true)
+      const result = makeMidiNote(-1)
+      expect(result.isErr()).toBe(true)
+      if (result.isErr()) {
+        expect(result.error.message).toMatch(/Nota MIDI inválida/)
+      }
       expect(makeMidiNote(128).isErr()).toBe(true)
     })
 

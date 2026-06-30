@@ -1,9 +1,9 @@
 /**
  * Núcleo Matemático e Inmutable del Dominio Musical
  *
- * Proporciona las bases matemáticas fundamentales para el análisis de afinación,
- * utilizando tipos nominales (Branding) para seguridad de unidades y
- * Neverthrow para el manejo funcional de errores.
+ * Implementa las bases matemáticas para el análisis de afinación,
+ * utilizando Tipos Nominales (Branding) para garantizar la integridad de las unidades
+ * y Neverthrow para el manejo funcional de errores.
  *
  * @packageDocumentation
  */
@@ -14,19 +14,19 @@ import { z } from 'zod';
 import { AppError, ERROR_CODES } from '../errors/app-error';
 
 // ---------------------------------------------------------------------------
-// Tipos Nominales (Branding)
+// Tipos Nominales (Branding) - Domain Guardian
 // ---------------------------------------------------------------------------
 
 declare const HertzSymbol: unique symbol;
-/** Representa una frecuencia física en Hercios. */
+/** Representa una frecuencia física en Hercios (Hz). */
 export type Hertz = number & { readonly [HertzSymbol]: typeof HertzSymbol };
 
 declare const CentsSymbol: unique symbol;
-/** Representa una desviación relativa en Cents. */
+/** Representa una desviación relativa en Cents (1/100 de semitono). */
 export type Cents = number & { readonly [CentsSymbol]: typeof CentsSymbol };
 
 declare const MidiNoteSymbol: unique symbol;
-/** Representa una nota MIDI (puede ser fraccional para microtonalidad). */
+/** Representa una nota MIDI (soporta valores fraccionales para microtonalidad). */
 export type MidiNote = number & { readonly [MidiNoteSymbol]: typeof MidiNoteSymbol };
 
 // ---------------------------------------------------------------------------
@@ -38,34 +38,33 @@ const CentsSchema = z.number().finite();
 const MidiNoteSchema = z.number().finite().min(0).max(127);
 
 // ---------------------------------------------------------------------------
-// Tipos y Constantes
+// Configuración de Afinación
 // ---------------------------------------------------------------------------
 
-/** Configuración de referencia para la afinación de la sesión. */
+/** Configuración de referencia para la afinación. */
 export interface TuningConfig {
-  /** Frecuencia de referencia para la nota A4. */
+  /** Frecuencia de referencia para la nota A4 (La 440Hz por defecto). */
   readonly a4Frequency: Hertz;
 }
 
-/** Afinación estándar de referencia internacional (A4 = 440Hz). */
+/** Afinación estándar de referencia (A4 = 440Hz). */
 export const DEFAULT_TUNING: TuningConfig = {
   a4Frequency: 440 as Hertz,
 };
 
 // ---------------------------------------------------------------------------
-// Factorías con Validación
+// Factorías con Validación (Functional DDD)
 // ---------------------------------------------------------------------------
 
 /**
- * Crea un valor de frecuencia en Hertz.
- * @param value - Valor numérico.
+ * Crea un valor de frecuencia en Hertz validado.
  */
 export function makeHertz(value: number): Result<Hertz, AppError> {
   const result = HertzSchema.safeParse(value);
   if (!result.success) {
     return err(
       new AppError({
-        message: 'Valor de Hertz inválido. Debe ser un número finito y positivo.',
+        message: 'Frecuencia inválida: debe ser un número finito y positivo.',
         code: ERROR_CODES.DATA_VALIDATION_ERROR,
       })
     );
@@ -74,15 +73,14 @@ export function makeHertz(value: number): Result<Hertz, AppError> {
 }
 
 /**
- * Crea un valor de desviación en Cents.
- * @param value - Valor numérico.
+ * Crea un valor de desviación en Cents validado.
  */
 export function makeCents(value: number): Result<Cents, AppError> {
   const result = CentsSchema.safeParse(value);
   if (!result.success) {
     return err(
       new AppError({
-        message: 'Valor de Cents inválido. Debe ser un número finito.',
+        message: 'Cents inválidos: debe ser un número finito.',
         code: ERROR_CODES.DATA_VALIDATION_ERROR,
       })
     );
@@ -91,15 +89,14 @@ export function makeCents(value: number): Result<Cents, AppError> {
 }
 
 /**
- * Crea una nota MIDI con soporte fraccional.
- * @param value - Valor numérico (0-127).
+ * Crea una nota MIDI validada.
  */
 export function makeMidiNote(value: number): Result<MidiNote, AppError> {
   const result = MidiNoteSchema.safeParse(value);
   if (!result.success) {
     return err(
       new AppError({
-        message: 'Valor de MidiNote inválido. Debe estar entre 0 y 127.',
+        message: 'Nota MIDI inválida: debe estar en el rango [0, 127].',
         code: ERROR_CODES.DATA_VALIDATION_ERROR,
       })
     );
@@ -108,11 +105,11 @@ export function makeMidiNote(value: number): Result<MidiNote, AppError> {
 }
 
 // ---------------------------------------------------------------------------
-// Fórmulas de Conversión (Master Clock: AudioContext.currentTime)
+// Conversiones Bidireccionales (Fórmulas Logarítmicas Base 2)
 // ---------------------------------------------------------------------------
 
 /**
- * Convierte frecuencia (Hz) a nota MIDI usando logaritmo base 2.
+ * Convierte frecuencia (Hz) a nota MIDI.
  * Fórmula: m = 12 * log2(f / f_A4) + 69
  */
 export function frequencyToMidi(
@@ -122,7 +119,7 @@ export function frequencyToMidi(
   if (frequency <= 0) {
     return err(
       new AppError({
-        message: 'Frecuencia no positiva para conversión MIDI.',
+        message: 'No se puede convertir una frecuencia no positiva.',
         code: ERROR_CODES.DATA_VALIDATION_ERROR,
       })
     );
@@ -144,11 +141,12 @@ export function midiToFrequency(
 }
 
 // ---------------------------------------------------------------------------
-// Versiones RAW (Zero-Allocation / Hot Path)
+// Versiones RAW (Optimización de Rendimiento - Zero-Allocation)
 // ---------------------------------------------------------------------------
 
 /**
- * Conversión rápida Hz \> MIDI sin validación ni boxing de Result.
+ * Conversión ultra-rápida Hz -> MIDI para el hot path.
+ * Evita validaciones y boxing de Result.
  * @internal
  */
 export function frequencyToMidiRaw(
@@ -159,7 +157,7 @@ export function frequencyToMidiRaw(
 }
 
 /**
- * Conversión rápida MIDI \> Hz sin validación ni boxing de Result.
+ * Conversión ultra-rápida MIDI -> Hz para el hot path.
  * @internal
  */
 export function midiToFrequencyRaw(
@@ -170,15 +168,11 @@ export function midiToFrequencyRaw(
 }
 
 /**
- * Calcula la desviación en cents entre dos puntos MIDI.
+ * Calcula la desviación en cents entre una nota medida y un objetivo.
  */
 export function calculateCentsDifference(measured: number, target: number): number {
   return (measured - target) * 100;
 }
-
-// ---------------------------------------------------------------------------
-// Utilidades de Dominio
-// ---------------------------------------------------------------------------
 
 /** Normalización de alteraciones musicales (-1, 0, 1). */
 export function normalizeAccidental(alter: number): Result<number, AppError> {
