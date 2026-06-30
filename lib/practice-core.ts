@@ -339,8 +339,6 @@ function handleNoteMatched(
   draft: PracticeState,
   payload: Extract<PracticeEvent, { type: 'NOTE_MATCHED' }>['payload'],
 ) {
-  if (draft.status !== 'listening' && draft.status !== 'validating' && draft.status !== 'correct') return
-
   const newestIndex =
     (draft.detectionHistory.head - 1 + draft.detectionHistory.maxSize) %
     draft.detectionHistory.maxSize

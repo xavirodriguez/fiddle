@@ -57,7 +57,6 @@ export class PracticeService {
     centsDeviation: 0,
     timestamp: 0,
     confidence: 0,
-    technique: undefined as PitchFrame['technique'],
   }
 
   private readonly REUSABLE_DETECTED_NOTE: DetectedNote = {
@@ -87,18 +86,10 @@ export class PracticeService {
         notifySuccess: () => {
           const store = useAppStore.getState()
           const detected = mapFrameToDetectedNote(
-            this.successSnapshot as MutablePitchFrame,
+            this.successSnapshot as unknown as MutablePitchFrame,
             this.cachedTargetPitch ?? '',
             this.REUSABLE_DETECTED_NOTE,
           )
-
-          // Generate observations for the matched note
-          let observations: Observation[] = []
-          if (this.successSnapshot.technique) {
-            observations = audioPipeline
-              .getTechniqueAgent()
-              .generateObservations(this.successSnapshot.technique, this.successSnapshot.timestamp)
-          }
 
           // Record the note in the technique agent for session statistics
           audioPipeline
@@ -106,14 +97,14 @@ export class PracticeService {
             .recordNote(
               detected.pitch,
               detected.cents,
-              this.successSnapshot.technique?.rmsStability ?? 1,
+              1, // Stability fallback as technique is not in snapshot
             )
 
           store.internalUpdate({
             type: 'NOTE_MATCHED',
             payload: {
               isPerfect: Math.abs(detected.cents) < 5,
-              observations,
+              observations: [],
               timestamp: this.successSnapshot.timestamp,
             },
           })
@@ -183,7 +174,7 @@ export class PracticeService {
     const shouldUpdateStore = now - this.lastUpdateTime > this.UPDATE_INTERVAL_SEC
 
     // 1. Update Tuner Store (Reactive UI)
-    store.updatePitch(frame.frequency, frame.confidence)
+    store.updatePitch(frame.frequency, frame.confidence, frame.centsDeviation)
 
     // 2. Real-time sync verification (O(1) Zero-Allocation)
     const detectedMidi = frequencyToMidiRaw(frame.frequency)
@@ -222,6 +213,7 @@ export class PracticeService {
     const practiceState = store.practiceState
 
     const note = MusicalNote.fromFrequencyShared(frame.frequency)
+    const nameWithOctave = note.nameWithOctave
 
     SHARED_PITCH_FRAME.frequency = frame.frequency
     SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
@@ -232,7 +224,7 @@ export class PracticeService {
 
     const detectedNote = mapFrameToDetectedNote(
       SHARED_PITCH_FRAME,
-      note.nameWithOctave,
+      nameWithOctave,
       this.REUSABLE_DETECTED_NOTE,
     )
 

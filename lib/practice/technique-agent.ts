@@ -4,11 +4,11 @@ import { type PitchFrame, VIOLIN_TOLERANCE_CENTS } from '../domain/data-structur
 import { type Observation, type SessionReport as DomainSessionReport, SHARED_TECHNIQUE_METRICS,type TechniqueMetrics } from '../technique-types';
 
 /**
- * InternalSessionTracker
+ * LocalSessionReport
  *
  * Tracks historical data for the current session (internal state).
  */
-interface InternalSessionTracker {
+interface LocalSessionReport {
   bestNote: string | null;
   bestNoteCents: number;
   worstNote: string | null;
@@ -34,7 +34,7 @@ export class TechniqueAgent {
   private readonly centsArray: Float64Array
   private readonly rmsArray: Float64Array
 
-  private sessionTracker: InternalSessionTracker = {
+  private sessionTracker: LocalSessionReport = {
     bestNote: null,
     bestNoteCents: Infinity,
     worstNote: null,
@@ -207,7 +207,7 @@ export class TechniqueAgent {
    * Generates a unique collection of observations for a specific technique snapshot.
    */
 
-  getSessionReport(): Readonly<SessionReport & { noteCount: number; bestNoteCents: number; worstNoteCents: number }> {
+  getSessionReport(): Readonly<DomainSessionReport & { noteCount: number; bestNoteCents: number; worstNoteCents: number }> {
     const r = this.sessionTracker;
     return {
       bestNote: r.bestNote,
