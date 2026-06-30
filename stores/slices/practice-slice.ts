@@ -2,6 +2,7 @@ import { type StateCreator } from 'zustand'
 
 import { type Note as TargetNote } from '@/lib/domain/exercise'
 import { type DetectedNote } from '@/lib/domain/practice'
+import { REQUIRED_HOLD_TIME_SEC } from '@/lib/practice/practice-constants'
 import type { PracticeEvent, PracticeState } from '@/lib/practice-core'
 import { reducePracticeEvent } from '@/lib/practice-core'
 
@@ -81,7 +82,7 @@ export interface PracticeSlice {
 
 export const createPracticeSlice: StateCreator<PracticeSlice> = (set, get) => ({
   practiceState: INITIAL_PRACTICE_STATE,
-  requiredHoldTime: 300,
+  requiredHoldTime: REQUIRED_HOLD_TIME_SEC,
   syncState: {
     currentMeasure: 0,
     currentMidiTarget: null,

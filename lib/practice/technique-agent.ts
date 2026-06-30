@@ -211,14 +211,11 @@ export class TechniqueAgent {
     const r = this.sessionTracker;
     return {
       bestNote: r.bestNote,
-      bestNoteAccuracy: r.bestNoteCents,
-      worstNote: r.worstNote,
-      worstNoteAccuracy: r.worstNoteCents,
-      overallStability: r.averageStability,
-      recommendation: this.getRecommendation(),
-      noteCount: r.noteCount,
       bestNoteCents: r.bestNoteCents,
+      worstNote: r.worstNote,
       worstNoteCents: r.worstNoteCents,
+      averageStability: r.averageStability,
+      noteCount: r.noteCount,
     };
   }
 

@@ -175,12 +175,11 @@ export class AudioPipeline {
   /**
    * Cleanup resources and stop hardware stream.
    */
-  async destroy(): Promise<void> {
+  async stop(): Promise<void> {
     this.internalSubscription?.unsubscribe()
     this.internalSubscription = null
     this.segmenter.stop()
     await this.adapter.stopStream()
-    this.inputSubject.complete()
   }
 }
 

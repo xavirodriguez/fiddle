@@ -178,9 +178,7 @@ export class MusicalNote {
   }
 
   get nameWithOctave(): string {
-    const result = `${this.noteName}${this.octave}`
-    assertValidNoteName(result)
-    return result
+    return `${this.noteName}${this.octave}`
   }
 }
 
@@ -341,7 +339,7 @@ function handleNoteMatched(
   draft: PracticeState,
   payload: Extract<PracticeEvent, { type: 'NOTE_MATCHED' }>['payload'],
 ) {
-  if (draft.status !== 'listening' && draft.status !== 'validating') return
+  if (draft.status !== 'listening' && draft.status !== 'validating' && draft.status !== 'correct') return
 
   const newestIndex =
     (draft.detectionHistory.head - 1 + draft.detectionHistory.maxSize) %
@@ -417,8 +415,8 @@ function evaluateDrillTarget(
     completedRepetitions = 0 // Reset on failure for "consecutive" logic
   }
 
-  // Bug 2: Loop completes after 3 perfect repetitions
-  const isLoopCompleted = completedRepetitions >= 3
+  // Bug 2: Loop completes after the required number of perfect repetitions
+  const isLoopCompleted = completedRepetitions >= drillTarget.perfectRepetitions
 
   return {
     drillTarget: {
