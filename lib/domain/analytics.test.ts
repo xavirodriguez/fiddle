@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { aggregateSessions } from './analytics'
+
 import { type PracticeSessionRecord } from '../persistence/storage-types'
+import { aggregateSessions } from './analytics'
 
 describe('Analytics Domain', () => {
   it('should return empty report for empty sessions', () => {

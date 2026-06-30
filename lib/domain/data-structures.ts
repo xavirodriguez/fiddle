@@ -7,6 +7,8 @@
  * @packageDocumentation
  */
 
+import { CircularBuffer } from 'mnemonist';
+
 import { type TechniqueMetrics } from '../technique-types';
 import { type Cents, type Hertz } from './musical-domain';
 
@@ -52,16 +54,14 @@ export const SHARED_PITCH_FRAME: MutablePitchFrame = {
 };
 
 /**
- * FixedRingBuffer: Buffer circular de tamaño fijo para datos temporales.
- * Utiliza un array pre-asignado para garantizar Zero-Allocation durante la ejecución.
+ * FixedRingBuffer: Buffer circular de tamaño fijo.
+ * Utiliza mnemonist.CircularBuffer para garantizar Zero-Allocation.
  */
 export class FixedRingBuffer<T> {
-  private readonly buffer: Array<T | undefined>;
-  private head = 0;
-  private size = 0;
+  private readonly buffer: CircularBuffer<T>;
 
   constructor(public readonly maxSize: number) {
-    this.buffer = new Array<T | undefined>(maxSize).fill(undefined);
+    this.buffer = new CircularBuffer(Array, maxSize);
   }
 
   /**
@@ -69,21 +69,14 @@ export class FixedRingBuffer<T> {
    * sobrescribe el elemento más antiguo (O(1)).
    */
   push(item: T): void {
-    this.buffer[this.head] = item;
-    this.head = (this.head + 1) % this.maxSize;
-    if (this.size < this.maxSize) {
-      this.size++;
-    }
+    this.buffer.push(item);
   }
 
-  /**
-   * Itera sobre los elementos desde el más reciente al más antiguo.
-   * Evita la creación de nuevos arrays para mantener la eficiencia.
-   */
+  /** Itera sobre los elementos de más reciente a más antiguo sin crear nuevos arrays. */
   forEach(callback: (item: T, index: number) => void): void {
-    for (let i = 0; i < this.size; i++) {
-      const index = (this.head - 1 - i + this.maxSize) % this.maxSize;
-      const item = this.buffer[index];
+    const size = this.buffer.size;
+    for (let i = 0; i < size; i++) {
+      const item = this.buffer.get(size - 1 - i);
       if (item !== undefined) {
         callback(item, i);
       }
@@ -94,20 +87,19 @@ export class FixedRingBuffer<T> {
    * Retorna el último elemento insertado sin extraerlo.
    */
   peek(): T | undefined {
-    if (this.size === 0) return undefined;
-    return this.buffer[(this.head - 1 + this.maxSize) % this.maxSize];
+    if (this.buffer.size === 0) return undefined;
+    return this.buffer.get(this.buffer.size - 1);
   }
 
   /**
    * Limpia el buffer lógicamente reseteando los punteros.
    */
   clear(): void {
-    this.head = 0;
-    this.size = 0;
+    this.buffer.clear();
   }
 
   get length(): number {
-    return this.size;
+    return this.buffer.size;
   }
 
   /**
@@ -116,10 +108,14 @@ export class FixedRingBuffer<T> {
    * @internal
    */
   toArray(): readonly T[] {
-    const result = new Array<T>(this.size);
-    this.forEach((item, i) => {
-      result[i] = item;
-    });
+    const size = this.buffer.size;
+    const result = new Array<T>(size);
+    for (let i = 0; i < size; i++) {
+      const item = this.buffer.get(size - 1 - i);
+      if (item !== undefined) {
+        result[i] = item;
+      }
+    }
     return result;
   }
 }

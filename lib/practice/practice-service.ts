@@ -12,12 +12,11 @@ import {
   SHARED_PITCH_FRAME,
 } from '../domain/data-structures'
 import { type Exercise, type Note as TargetNote } from '../domain/exercise'
-import { type Cents, frequencyToMidiRaw, type Hertz } from '../domain/musical-domain'
+import { frequencyToMidiRaw } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
 import { audioManager } from '../infrastructure/audio-manager'
 import { formatPitchName, MusicalNote } from '../practice-core'
-import { type Observation } from '../technique-types'
 import { type PracticeEvent, practiceMachine } from './practice-machine'
 import { type MusicalEvent, TimelineSynchronizer } from './timeline-synchronizer'
 
@@ -61,8 +60,8 @@ export class PracticeService {
 
   private readonly REUSABLE_DETECTED_NOTE: DetectedNote = {
     pitch: '',
-    pitchHz: 0 as Hertz,
-    cents: 0 as Cents,
+    pitchHz: 0,
+    cents: 0,
     timestamp: 0,
     confidence: 0,
   }
@@ -85,7 +84,7 @@ export class PracticeService {
         notifySuccess: () => {
           const store = useAppStore.getState()
           const detected = mapFrameToDetectedNote(
-            this.successSnapshot as unknown as MutablePitchFrame,
+            this.successSnapshot as MutablePitchFrame,
             this.cachedTargetPitch ?? '',
             this.REUSABLE_DETECTED_NOTE,
           )
@@ -211,28 +210,21 @@ export class PracticeService {
     const store = useAppStore.getState()
     const practiceState = store.practiceState
 
-    const note = MusicalNote.fromFrequencyShared(frame.frequency)
-    const nameWithOctave = note.nameWithOctave
-
-    SHARED_PITCH_FRAME.frequency = frame.frequency
-    SHARED_PITCH_FRAME.centsDeviation = note.centsDeviation as Cents
-    SHARED_PITCH_FRAME.timestamp = now
-    SHARED_PITCH_FRAME.confidence = frame.confidence
-
     this.updateTargetCache(practiceState)
 
-    const detectedNote = mapFrameToDetectedNote(
-      SHARED_PITCH_FRAME,
-      nameWithOctave,
-      this.REUSABLE_DETECTED_NOTE,
-    )
-
     if (shouldUpdateStore) {
+      const note = MusicalNote.fromFrequencyShared(frame.frequency)
+      const detectedNote = mapFrameToDetectedNote(
+        frame,
+        note.nameWithOctave,
+        this.REUSABLE_DETECTED_NOTE,
+      )
       store.internalUpdate({ type: 'NOTE_DETECTED', payload: detectedNote })
       this.lastUpdateTime = frame.timestamp
     }
 
     // Use pre-allocated event object
+    // Note: this.REUSABLE_PITCH_EVENT already points to SHARED_PITCH_FRAME which is updated in pipeline
     this.actor.send(this.REUSABLE_PITCH_EVENT)
   }
 
