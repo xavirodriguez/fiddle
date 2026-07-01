@@ -154,18 +154,28 @@ export class PracticeService {
 
     // Start Tone Transport via Bridge initialization (already done in initialize)
     await Tone.start()
-    Tone.getTransport().start()
+
+    // Ensure the transport is clean before starting
+    Tone.getTransport().stop()
+    Tone.getTransport().cancel()
 
     // Schedule musical events in Tone.js Transport
     this.synchronizer.schedule((event) => {
       if (this.onNoteTriggered) this.onNoteTriggered(event)
     })
+
+    Tone.getTransport().start()
   }
 
-  stop() {
+  async stop() {
     this.actor.stop()
-    audioPipeline.stop().catch((err) => console.error('[AudioPipeline]', err))
+    // Await pipeline stop to ensure hardware resources are released
+    await audioPipeline.stop().catch((err) => console.error('[AudioPipeline]', err))
     toneAudioPlayer.stopAll()
+
+    // Ensure transport is stopped and cleared to prevent event leakage
+    Tone.getTransport().stop()
+    Tone.getTransport().cancel()
   }
 
   private processFrame(frame: PitchFrame) {
