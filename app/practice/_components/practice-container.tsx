@@ -69,7 +69,7 @@ export function PracticeContainer() {
   const handleTogglePlay = () => {
     const toggle = async () => {
       if (isPlaying) {
-        practiceService.stop()
+        await practiceService.stop()
         internalUpdate({ type: 'STOP' })
       } else {
         await audioManager.initialize()
