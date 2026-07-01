@@ -19,3 +19,4 @@
 
 ## Pending Work
 - Advanced AI-driven technique recommendations (Phase 7 expansion).
+- Performance dashboard for long-term progress visualization.
