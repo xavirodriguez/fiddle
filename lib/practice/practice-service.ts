@@ -12,7 +12,7 @@ import {
   SHARED_PITCH_FRAME,
 } from '../domain/data-structures'
 import { type Exercise, type Note as TargetNote } from '../domain/exercise'
-import { type Cents, frequencyToMidiRaw } from '../domain/musical-domain'
+import { frequencyToMidiRaw } from '../domain/musical-domain'
 import { type DetectedNote, type PracticeState } from '../domain/practice'
 import { toneAudioPlayer } from '../infrastructure/audio/tone-audio-player'
 import { audioManager } from '../infrastructure/audio-manager'
@@ -272,7 +272,7 @@ export class PracticeService {
 
   cleanup() {
     this.pipelineSubscription?.unsubscribe()
-    this.stop()
+    void this.stop().catch((err) => console.error('[PracticeService] Stop failed:', err))
   }
 }
 

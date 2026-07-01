@@ -1,6 +1,6 @@
 import { type Result } from 'neverthrow'
 
-import { type RawPitchEvent } from '../audio/audio-pipeline'
+import { type PitchFrame } from '../domain/data-structures'
 import { type AppError } from '../errors/app-error'
 
 /**
@@ -59,7 +59,7 @@ export interface PitchDetectorWorkerPort {
   /**
    * Registers a callback for when the worker completes an analysis.
    */
-  onResult(callback: (result: RawPitchEvent) => void): void
+  onResult(callback: (result: PitchFrame) => void): void
 
   /**
    * Terminates the worker.
