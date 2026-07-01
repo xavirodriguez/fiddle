@@ -14,6 +14,8 @@ interface LocalSessionReport {
   worstNote: string | null;
   worstNoteCents: number;
   averageStability: number;
+  averageSpectralFlatness: number;
+  averageSpectralCentroid: number;
   noteCount: number;
 }
 
@@ -40,6 +42,8 @@ export class TechniqueAgent {
     worstNote: null,
     worstNoteCents: 0,
     averageStability: 0,
+    averageSpectralFlatness: 0,
+    averageSpectralCentroid: 0,
     noteCount: 0,
   }
 
@@ -185,9 +189,15 @@ export class TechniqueAgent {
   /**
    * Updates session statistics with a newly completed note.
    */
-  recordNote(noteName: string, avgCents: number, stability: number): void {
-    const absCents = Math.abs(avgCents);
-    const r = this.sessionTracker;
+  recordNote(
+    noteName: string,
+    avgCents: number,
+    stability: number,
+    spectralFlatness?: number,
+    spectralCentroid?: number,
+  ): void {
+    const absCents = Math.abs(avgCents)
+    const r = this.sessionTracker
 
     if (absCents < r.bestNoteCents) {
       r.bestNote = noteName
@@ -199,7 +209,17 @@ export class TechniqueAgent {
       r.worstNoteCents = absCents
     }
 
-    r.averageStability = (r.averageStability * r.noteCount + stability) / (r.noteCount + 1)
+    const n = r.noteCount
+    r.averageStability = (r.averageStability * n + stability) / (n + 1)
+
+    if (spectralFlatness !== undefined) {
+      r.averageSpectralFlatness = (r.averageSpectralFlatness * n + spectralFlatness) / (n + 1)
+    }
+
+    if (spectralCentroid !== undefined) {
+      r.averageSpectralCentroid = (r.averageSpectralCentroid * n + spectralCentroid) / (n + 1)
+    }
+
     r.noteCount++
   }
 
@@ -220,22 +240,34 @@ export class TechniqueAgent {
   }
 
   getRecommendation(): string {
-    const r = this.sessionTracker;
-    if (r.noteCount === 0) return 'Comienza a tocar para recibir recomendaciones.';
+    const r = this.sessionTracker
+    if (r.noteCount === 0) return 'Comienza a tocar para recibir recomendaciones.'
 
+    // Priority 1: Stability (Bowing/Air)
     if (r.averageStability < 0.7) {
-      return 'Enfócate en mantener el arco constante y la presión uniforme.'
+      return 'Tu estabilidad es baja. Enfócate en mantener el arco constante y la presión uniforme.'
     }
 
+    // Priority 2: Tone Quality (Airy/Scratchy)
+    if (r.averageSpectralFlatness > 0.4) {
+      return 'Tu sonido tiene mucho aire. Prueba a ajustar el punto de contacto del arco o el apoyo.'
+    }
+
+    if (r.averageSpectralCentroid > 3000) {
+      return 'Tu sonido es demasiado metálico. Intenta alejar el arco del puente.'
+    }
+
+    // Priority 3: Intonation
     if (r.worstNoteCents > 15) {
-      return `La nota ${r.worstNote ?? ''} está dándote problemas. Intenta practicarla lentamente.`
+      return `La nota ${r.worstNote ?? ''} tiene problemas de afinación persistentes. Practícala aislada.`
     }
 
+    // Priority 4: Advanced Progress
     if (r.bestNoteCents < 5 && r.averageStability > 0.9) {
-      return '¡Excelente técnica! Intenta añadir vibrato para mayor expresividad.'
+      return '¡Excelente técnica! Estás listo para trabajar en vibrato o dinámicas más complejas.'
     }
 
-    return 'Sigue así, mantén la concentración en la afinación.'
+    return 'Sigue así, mantén la concentración en la pureza del sonido y la afinación.'
   }
 
   clear(): void {
@@ -251,6 +283,8 @@ export class TechniqueAgent {
       worstNote: null,
       worstNoteCents: 0,
       averageStability: 0,
+      averageSpectralFlatness: 0,
+      averageSpectralCentroid: 0,
       noteCount: 0,
     }
   }

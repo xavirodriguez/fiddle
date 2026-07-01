@@ -18,3 +18,8 @@
 - **Aislamiento de API de Audio:** Ninguna capa de persistencia o servicio de gameplay puede importar código directamente de Web Audio API; todo control de hardware pasa a través de `lib/ports/audio.port.ts`.
 - **Rendimiento de Tests:** El comando `npm run test` debe ejecutar el suite de pruebas en menos de 2 segundos de forma totalmente determinista.
 - **Calidad de Tipado:** El analizador estático de TypeScript debe pasar con cero errores bajo configuraciones de `"strict": true`.
+
+## 5. Mandatos Críticos de Rendimiento (Guardrails de Arquitectura)
+1. **Bucle de Audio Desacoplado:** Todo procesamiento DSP (`pitchy`, `meyda`) debe ejecutarse en un hilo secundario mediante un `AudioWorkletProcessor`.
+2. **Zero-Allocation en Runtime:** Dentro del bucle crítico a 60 FPS o en el Worklet, queda prohibida la creación dinámica de objetos (`{}`), arrays (`[]`) o el uso de la palabra clave `new`. Se deben reutilizar buffers pre-alojados.
+3. **Sincronización Determinista:** El reloj maestro del juego es EXCLUSIVAMENTE `AudioContext.currentTime`. Queda prohibido el uso de `Date.now()` o `performance.now()` para coordinar eventos musicales.

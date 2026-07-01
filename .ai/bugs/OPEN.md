@@ -1,5 +1,3 @@
-# AI Project Memory
+# Open Bugs
 
-Este archivo forma parte de la memoria del proyecto.
-
-Actualizarlo cuando cambie el estado del proyecto.
+(No critical open bugs identified in the core DSP or state management layers).
