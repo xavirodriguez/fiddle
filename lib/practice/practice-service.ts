@@ -224,8 +224,9 @@ export class PracticeService {
 
     this.updateTargetCache(practiceState)
 
+    const note = MusicalNote.fromFrequencyShared(frame.frequency)
+
     if (shouldUpdateStore) {
-      const note = MusicalNote.fromFrequencyShared(frame.frequency)
       const detectedNote = mapFrameToDetectedNote(
         frame,
         note.nameWithOctave,

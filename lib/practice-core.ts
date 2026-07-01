@@ -99,9 +99,9 @@ export class MusicalNote {
     frequency: number,
     config: TuningConfig = DEFAULT_TUNING,
   ): MusicalNote {
-    validateFrequency(frequency)
+    if (!Number.isFinite(frequency) || frequency <= 0) return MusicalNote.REUSABLE_INSTANCE
     const midiResult = frequencyToMidi(frequency as Hertz, config)
-    if (midiResult.isErr()) throw midiResult.error
+    if (midiResult.isErr()) return MusicalNote.REUSABLE_INSTANCE
     const exactMidi = midiResult.value
     const roundedMidi = Math.round(exactMidi)
     const centsDeviation = (exactMidi - roundedMidi) * 100
@@ -119,9 +119,9 @@ export class MusicalNote {
   }
 
   static fromFrequency(frequency: number, config: TuningConfig = DEFAULT_TUNING): MusicalNote {
-    validateFrequency(frequency)
+    if (!Number.isFinite(frequency) || frequency <= 0) return new MusicalNote(0, 0, 'C', 0, 0)
     const midiResult = frequencyToMidi(frequency as Hertz, config)
-    if (midiResult.isErr()) throw midiResult.error
+    if (midiResult.isErr()) return new MusicalNote(0, 0, 'C', 0, 0)
     const exactMidi = midiResult.value
     const roundedMidi = Math.round(exactMidi)
     const centsDeviation = (exactMidi - roundedMidi) * 100
@@ -134,7 +134,7 @@ export class MusicalNote {
 
   static fromMidi(midiNumber: number, config: TuningConfig = DEFAULT_TUNING): MusicalNote {
     const freqResult = midiToFrequency(midiNumber as MidiNote, config)
-    if (freqResult.isErr()) throw freqResult.error
+    if (freqResult.isErr()) return new MusicalNote(0, 0, 'C', 0, 0)
     return MusicalNote.fromFrequency(freqResult.value, config)
   }
 
@@ -182,11 +182,6 @@ export class MusicalNote {
   }
 }
 
-function validateFrequency(frequency: number): void {
-  if (!Number.isFinite(frequency) || frequency <= 0) {
-    throw new Error(`Invalid frequency: ${frequency}`)
-  }
-}
 
 // --- PURE FUNCTIONS ---
 
@@ -339,6 +334,7 @@ function handleNoteMatched(
   draft: PracticeState,
   payload: Extract<PracticeEvent, { type: 'NOTE_MATCHED' }>['payload'],
 ) {
+  // Guard removed as XState dictates the logic, Zustand reflects.
   const newestIndex =
     (draft.detectionHistory.head - 1 + draft.detectionHistory.maxSize) %
     draft.detectionHistory.maxSize
