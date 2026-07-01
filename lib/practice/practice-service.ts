@@ -82,6 +82,7 @@ export class PracticeService {
           this.successSnapshot.centsDeviation = SHARED_PITCH_FRAME.centsDeviation
           this.successSnapshot.timestamp = SHARED_PITCH_FRAME.timestamp
           this.successSnapshot.confidence = SHARED_PITCH_FRAME.confidence
+          this.successSnapshot.technique = SHARED_PITCH_FRAME.technique
         },
         notifySuccess: () => {
           const store = useAppStore.getState()
@@ -92,12 +93,15 @@ export class PracticeService {
           )
 
           // Record the note in the technique agent for session statistics
+          const tech = this.successSnapshot.technique
           audioPipeline
             .getTechniqueAgent()
             .recordNote(
               detected.pitch,
               detected.cents,
-              1, // Stability fallback as technique is not in snapshot
+              tech?.rmsStability ?? 1,
+              tech?.spectralFlatness,
+              tech?.spectralCentroid,
             )
 
           store.internalUpdate({
@@ -224,8 +228,9 @@ export class PracticeService {
 
     this.updateTargetCache(practiceState)
 
+    const note = MusicalNote.fromFrequencyShared(frame.frequency)
+
     if (shouldUpdateStore) {
-      const note = MusicalNote.fromFrequencyShared(frame.frequency)
       const detectedNote = mapFrameToDetectedNote(
         frame,
         note.nameWithOctave,

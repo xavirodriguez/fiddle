@@ -1,7 +1,5 @@
-# Project Gotchas
+# Gotchas & Technical Hurdles
 
-## Audio Context Synchronization
-Tone.js does not automatically use the native `AudioContext` used by other Web Audio nodes. It is mandatory to use `ToneBridge` to ensure `Tone.setContext` is called with the application's master `AudioContext` to avoid clock drift and "context not started" errors.
-
-## Zero-Allocation in Reducers
-While `immer` allows for "mutable-like" code, frequent updates to large arrays (like `detectionHistory`) still incur overhead. We use `FixedRingBuffer` internally and synchronize it with the state draft carefully to minimize object creation during high-frequency events.
+- **AudioWorklet & SharedArrayBuffer:** Note that message passing between the Worklet and Main thread must use structured cloning or Transferable objects. While small messages are fast with structured cloning, large data buffers MUST be transferred to avoid GC pressure.
+- **Tone.js & AudioContext:** Tone.js must be explicitly synchronized with the global `AudioContext` provided by `AudioManager`.
+- **Zero-Allocation Ring Buffers:** Re-using `SHARED_PITCH_FRAME` and `SHARED_TECHNIQUE_METRICS` is mandatory, but subscribers must copy values if they need to hold them across multiple frames (which they shouldn't in the hot path).
