@@ -22,20 +22,23 @@ class CaptureProcessor extends AudioWorkletProcessor {
 
     /**
      * Buffer Pool for Zero-Allocation messaging.
-     * We use a small pool of Float64Arrays to avoid per-frame allocation
-     * while still supporting Transferable Objects.
+     * We use a pool of Float64Arrays and Transferable Objects to avoid GC.
      */
     this._bufferPool = [
       new Float64Array(6),
       new Float64Array(6),
+      new Float64Array(6),
       new Float64Array(6)
     ];
-    this._poolIdx = 0;
+    this._availableBuffers = [...this._bufferPool];
 
     this.port.onmessage = (event) => {
       if (event.data.type === 'init') {
         this._sampleRate = event.data.sampleRate;
         this._detector = PitchDetector.forFloat32Array(this._bufferSize);
+      } else if (event.data instanceof Float64Array) {
+        // Regresar buffer al pool (Task 2.3)
+        this._availableBuffers.push(event.data);
       }
     };
   }
@@ -61,28 +64,27 @@ class CaptureProcessor extends AudioWorkletProcessor {
           let pitchHz = 0;
           let confidence = 0;
 
-          // 2. Pitch Detection (Noise Gate)
-          if (rms > 0.01) {
+          // 2. Pitch Detection (Noise Gate - Task 2.3)
+          const noiseGateThreshold = 0.01;
+          if (rms > noiseGateThreshold) {
             const pitchResult = detector.findPitch(buffer, this._sampleRate);
             pitchHz = pitchResult[0] || 0;
             confidence = pitchResult[1] || 0;
           }
 
-          // 3. Update result container from pool
-          const output = this._bufferPool[this._poolIdx];
-          output[0] = pitchHz;
-          output[1] = confidence;
-          output[2] = rms;
-          output[3] = features?.spectralFlatness || 0;
-          output[4] = features?.spectralCentroid || 0;
-          output[5] = currentTime;
+          // 3. Update result container from pool (Task 2.3)
+          const output = this._availableBuffers.pop();
+          if (output) {
+            output[0] = pitchHz;
+            output[1] = confidence;
+            output[2] = rms;
+            output[3] = features?.spectralFlatness || 0;
+            output[4] = features?.spectralCentroid || 0;
+            output[5] = currentTime;
 
-          // 4. Post results to main thread using Transferable Objects
-          // Note: We don't transfer the buffer for such small data (6 floats)
-          // because it requires re-allocating in the pool every frame,
-          // violating Zero-Allocation. Structured clone is faster for this size.
-          this.port.postMessage(output);
-          this._poolIdx = (this._poolIdx + 1) % this._bufferPool.length;
+            // 4. Post results to main thread using Transferable Objects
+            this.port.postMessage(output, [output.buffer]);
+          }
         }
 
         this._ptr = 0;
