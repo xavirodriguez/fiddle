@@ -104,9 +104,18 @@ export const createPracticeSlice: StateCreator<PracticeSlice> = (set, get) => ({
   },
 
   updateSync(sync) {
-    set((state) => ({
-      syncState: { ...state.syncState, ...sync },
-    }))
+    const current = get().syncState
+    const hasChanged =
+      (sync.currentMeasure !== undefined && sync.currentMeasure !== current.currentMeasure) ||
+      (sync.currentMidiTarget !== undefined && sync.currentMidiTarget !== current.currentMidiTarget) ||
+      (sync.isCorrectPitch !== undefined && sync.isCorrectPitch !== current.isCorrectPitch) ||
+      (sync.isCorrectTiming !== undefined && sync.isCorrectTiming !== current.isCorrectTiming)
+
+    if (hasChanged) {
+      set((state) => ({
+        syncState: { ...state.syncState, ...sync },
+      }))
+    }
   },
 
   loadExercise(exercise: PracticeState['exercise']) {

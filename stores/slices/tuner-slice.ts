@@ -68,11 +68,23 @@ export const createTunerSlice: StateCreator<TunerSlice> = (set, get) => {
       set({ active: false })
     },
 
+    /**
+     * Updates the tuner state with new pitch data.
+     * PERFORMANCE: High-frequency data (frequency, cents, confidence) is updated
+     * via this method. While it uses `set`, React components like FeedbackOverlay
+     * bypass React reconciliation by using RAF and `getState()` for these fields,
+     * so the re-render cost is minimized.
+     */
     updatePitch(frequencyHz: number, confidence: number, centsDeviation?: number) {
       const cents = (centsDeviation ?? 0) as Cents
+
+      // Update local mutable frame first
       _frame.frequency = frequencyHz as Hertz
       _frame.cents = cents
       _frame.confidence = confidence
+
+      // Update the store. React components observing these will re-render,
+      // but FeedbackOverlay uses direct DOM manipulation in its RAF loop.
       set({
         frequency: _frame.frequency,
         cents: _frame.cents,

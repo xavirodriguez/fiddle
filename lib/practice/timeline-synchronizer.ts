@@ -99,6 +99,7 @@ export class TimelineSynchronizer {
 
       let totalBeats = 0
       const secondsPerBeat = 60 / this.exerciseBpm
+      const beatsPerMeasure = exercise.timeSignature?.beats ?? 4
 
       exercise.notes.forEach((note, index) => {
         const noteName = formatPitchName(note.pitch)
@@ -113,7 +114,7 @@ export class TimelineSynchronizer {
           startTime: startTimeSeconds as Seconds,
           duration: durationSeconds as Seconds,
           noteIndex: index,
-          measureIndex: Math.floor(index / 4), // Fallback: assumes 4/4 if not provided
+          measureIndex: Math.floor(totalBeats / beatsPerMeasure),
         })
 
         totalBeats += note.duration
