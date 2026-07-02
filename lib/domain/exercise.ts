@@ -45,6 +45,16 @@ export interface Note {
 // Exercise
 // ---------------------------------------------------------------------------
 
+/**
+ * Represents a musical time signature (e.g., 4/4).
+ */
+export interface TimeSignature {
+  /** Number of beats per measure (numerator). */
+  readonly beats: number
+  /** The note value that represents one beat (denominator). */
+  readonly beatValue: number
+}
+
 /** A complete practice exercise consisting of an ordered sequence of notes. */
 export interface Exercise {
   /** Stable unique identifier. */
@@ -57,4 +67,6 @@ export interface Exercise {
   readonly musicXml?: string
   /** Tempo in BPM. */
   readonly bpm?: number
+  /** Time signature for measure calculation. Defaults to 4/4 if not provided. */
+  readonly timeSignature?: TimeSignature
 }

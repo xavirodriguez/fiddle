@@ -110,6 +110,13 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
      *    the variable latency of the React commit phase.
      */
     useImperativeHandle(ref, () => ({
+      /**
+       * Loads and renders a MusicXML score.
+       *
+       * DESIGN DECISIONS:
+       * - Pre-calculates total notes via iteration to provide immediate feedback to the UI.
+       * - Uses a polling mechanism for OSMD initialization to handle lazy-loading edge cases.
+       */
       async loadScore(musicXml: string) {
         // Handle case where OSMD might still be loading asynchronously
         if (!osmdRef.current) {
@@ -146,6 +153,13 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
         }
       },
 
+      /**
+       * Advances the musical cursor to the next note.
+       *
+       * PERFORMANCE:
+       * - Bypasses React reconciliation completely.
+       * - Performs O(1) pointer movement and SVG/Canvas update.
+       */
       nextStep() {
         const osmd = osmdRef.current
         if (!osmd || osmd.cursor.Iterator.EndReached) return
@@ -154,6 +168,9 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
         currentNoteIndexRef.current++
       },
 
+      /**
+       * Resets the cursor to the beginning of the score.
+       */
       resetCursor() {
         const osmd = osmdRef.current
         if (!osmd) return
@@ -162,13 +179,17 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
         currentNoteIndexRef.current = 0
       },
 
+      /**
+       * Jumps the cursor to a specific measure index.
+       *
+       * PERFORMANCE:
+       * - Uses sequential iteration for reliability across OSMD versions.
+       * - Still significantly cheaper than a React component re-render.
+       */
       moveToMeasure(measureIndex: number) {
         const osmd = osmdRef.current
         if (!osmd) return
 
-        // OSMD doesn't have a direct "jump to measure" for the cursor that is
-        // reliable across all versions, so we reset and advance.
-        // This is still faster than a full React re-render.
         osmd.cursor.reset()
         currentNoteIndexRef.current = 0
 
@@ -179,6 +200,9 @@ export const ScoreViewer = forwardRef<ScoreViewerRef, ScoreViewerProps>(
         }
       },
 
+      /**
+       * Returns the current zero-indexed note position.
+       */
       getCurrentNoteIndex() {
         return currentNoteIndexRef.current
       }

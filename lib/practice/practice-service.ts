@@ -195,6 +195,8 @@ export class PracticeService {
     const verification = this.synchronizer.verify(now, detectedMidi)
 
     // 3. Update Sync State (Only on discrete changes to maintain 60 FPS)
+    // PERFORMANCE: By only updating the store when fundamental musical state changes,
+    // we prevent React from re-rendering the feedback components at 60 FPS.
     const sync = store.syncState
     const timeline = this.synchronizer.getTimeline()
     const nextMeasure = timeline[verification.currentNoteIndex]?.measureIndex ?? 0

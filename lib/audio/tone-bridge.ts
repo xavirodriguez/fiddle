@@ -126,7 +126,7 @@ export class ToneBridge {
    * Updates the global transport BPM using the nominal BPM type.
    */
   static setBpm(bpm: BPM): void {
-    Tone.getTransport().bpm.value = bpm
+    Tone.getTransport().bpm.value = bpm as number
   }
 
   /**
