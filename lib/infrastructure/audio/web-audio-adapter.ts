@@ -44,18 +44,19 @@ export class WebAudioAdapter implements AudioCapturePort {
       await ctx.audioWorklet.addModule('/worklets/CaptureProcessor.js')
 
       // Filtro Biquad Adaptativo (Rango Violín G3-E7)
+      // Usamos bandpass para aislar la fundamental y reducir armónicos/ruido.
       this.filter = ctx.createBiquadFilter()
       this.filter.type = 'bandpass'
-      this.filter.frequency.value = 1416 // Centro inicial
-      this.filter.Q.value = 0.5
+      this.filter.frequency.value = 440 // A4 como base
+      this.filter.Q.value = 1.0 // Q moderado para no matar la señal si hay vibrato
 
-      // Compresor para suavizar ataques
+      // Compresor para suavizar ataques agresivos y estabilizar la señal (Task 2.2)
       this.compressor = ctx.createDynamicsCompressor()
-      this.compressor.threshold.value = -24
-      this.compressor.knee.value = 30
-      this.compressor.ratio.value = 12
-      this.compressor.attack.value = 0.003
-      this.compressor.release.value = 0.25
+      this.compressor.threshold.setValueAtTime(-24, ctx.currentTime)
+      this.compressor.knee.setValueAtTime(30, ctx.currentTime)
+      this.compressor.ratio.setValueAtTime(12, ctx.currentTime)
+      this.compressor.attack.setValueAtTime(0.003, ctx.currentTime)
+      this.compressor.release.setValueAtTime(0.25, ctx.currentTime)
 
       source.connect(this.filter)
       this.filter.connect(this.compressor)
@@ -73,12 +74,15 @@ export class WebAudioAdapter implements AudioCapturePort {
   }
 
   /**
-   * Ajusta dinámicamente la frecuencia del filtro biquad.
+   * Ajusta dinámicamente la frecuencia del filtro biquad (Task 2.2).
+   * Aumenta el Q cuando hay una nota objetivo para mayor selectividad.
    */
-  public updateFilterFrequency(hz: number): void {
+  public updateFilterFrequency(hz: number, isTargeted: boolean = true): void {
     const ctx = audioManager.getContext()
     if (this.filter && ctx) {
-      this.filter.frequency.setTargetAtTime(hz, ctx.currentTime, 0.1)
+      const targetQ = isTargeted ? 2.0 : 0.7
+      this.filter.frequency.setTargetAtTime(hz, ctx.currentTime, 0.05)
+      this.filter.Q.setTargetAtTime(targetQ, ctx.currentTime, 0.05)
     }
   }
 
@@ -120,6 +124,10 @@ export class WebAudioAdapter implements AudioCapturePort {
         const data = event.data
         if (data.length === 6) {
           onFrame(data)
+          // Task 2.3: Devolver el buffer al pool del Worklet (Transferable Objects)
+          if (this.workletNode) {
+            this.workletNode.port.postMessage(data, [data.buffer])
+          }
         }
       }
 
